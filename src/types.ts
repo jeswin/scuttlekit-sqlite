@@ -23,6 +23,6 @@ export interface DatabaseSchema {
   };
 }
 
-export interface ScuttleBot {
+export interface Host {
   
 }
