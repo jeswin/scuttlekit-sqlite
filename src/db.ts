@@ -11,13 +11,29 @@ export class SqliteDb {
     this.token = token;
   }
 
-  async insert(row: object, db: string, host: Host) {}
+  async insert(table: string, row: object, host: Host) {
+    return host.write({
+      type: table,
+      ...row
+    });
+  }
 
-  async update(host: Host) {}
+  async update(table: string, fields: object, host: Host) {
+    return host.write({
+      type: table,
+      ...fields
+    });
+  }
 
-  async del(host: Host) {}
+  async del(table: string, id: string, host: Host) {
+    return host.write({
+      type: table,
+    })
+  }
 
-  async query(host: Host) {}
+  async query(host: Host) {
+    
+  }
 
   /*
     ScuttleKit transactions are a little different from a regular database transaction.

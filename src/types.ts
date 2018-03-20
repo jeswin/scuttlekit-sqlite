@@ -24,5 +24,5 @@ export interface DatabaseSchema {
 }
 
 export interface Host {
-  
+  write(record: object) : Promise<void> 
 }
