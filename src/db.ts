@@ -2,22 +2,34 @@ import Database = require("better-sqlite3");
 import * as instances from "./instances";
 import { DatabaseSchema, Host } from "./types";
 
-export class SqliteDb {
-  appName: string;
-  token: string;
+function objectToParameterNames(obj: object, tableSchema: object) {
 
-  constructor(appName: string, token: string) {
+}
+
+export default class SqliteDb {
+  appName: string;
+
+  constructor(appName: string) {
     this.appName = appName;
-    this.token = token;
   }
 
-  async insert(row: object, db: string, host: Host) {}
+  async insert(table: string, row: object, db: string, host: Host) {
+    const sqlite = await instances.getDbByName(db);
+    const statement = sqlite.prepare(`INSERT INTO ${table} VALUES `)
+    statement.run(row);
+  }
 
-  async update(host: Host) {}
+  async update(host: Host) {
 
-  async del(host: Host) {}
+  }
 
-  async query(host: Host) {}
+  async del(host: Host) {
+
+  }
+
+  async query(host: Host) {
+
+  }
 
   /*
     ScuttleKit transactions are a little different from a regular database transaction.
