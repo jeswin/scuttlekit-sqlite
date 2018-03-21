@@ -13,6 +13,7 @@ export default class SqliteDb {
     this.appName = appName;
   }
 
+<<<<<<< HEAD
   async insert(table: string, row: object, db: string, host: Host) {
     const sqlite = await instances.getDbByName(db);
     const statement = sqlite.prepare(`INSERT INTO ${table} VALUES `)
@@ -29,6 +30,30 @@ export default class SqliteDb {
 
   async query(host: Host) {
 
+=======
+  async insert(table: string, row: object, host: Host) {
+    return host.write({
+      type: table,
+      ...row
+    });
+  }
+
+  async update(table: string, fields: object, host: Host) {
+    return host.write({
+      type: table,
+      ...fields
+    });
+  }
+
+  async del(table: string, id: string, host: Host) {
+    return host.write({
+      type: table,
+    })
+  }
+
+  async query(host: Host) {
+    
+>>>>>>> 0e28bbbb7f44bf81f9335f7c57d0cea8e14d6418
   }
 
   /*
