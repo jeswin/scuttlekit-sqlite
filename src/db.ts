@@ -24,7 +24,8 @@ export class SqliteDb {
   */
 export async function createDatabase(
   appName: string,
-  settings: DatabaseSchema
+  settings: DatabaseSchema,
+  host: Host
 ) {
   const underlying = new Database(appName);
 
@@ -40,7 +41,7 @@ export async function createDatabase(
 /*
   Load an existing Database. Throw an error if the database wasn't initialized previously.
 */
-export async function load(appName: string) {
+export async function load(appName: string, host: Host) {
   const underlying = new Database(appName);
   const loadSettingsQuery = underlying.prepare(
     "SELECT value FROM scuttlekit_settings WHERE key = 'settings'"

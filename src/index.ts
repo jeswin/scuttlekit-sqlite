@@ -1,13 +1,12 @@
 import { Host, DatabaseSchema } from "./types";
-import * as instances from "./instances";
+import * as db from "./db";
 
 /*
   Called when Scuttlekit is initialized. This creates the database.
   If the database already exists when init() is called, an error is thrown.
 */
 export async function register(appName: string, settings: DatabaseSchema, host: Host) {
-  const db = await instances.getDb(appName);
-  await db.create(settings);
+  await db.createDatabase(appName, settings, host);
 }
 
 /*
@@ -16,5 +15,6 @@ export async function register(appName: string, settings: DatabaseSchema, host: 
   There may also be multiple client apps speaking to us; so the db connection cache will hold multiple databases.
 */
 export async function init(appName: string, host: Host) {
+  await db.load(appName, host);
   return new SqliteDb(appName)
 }
