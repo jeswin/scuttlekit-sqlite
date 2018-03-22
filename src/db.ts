@@ -1,72 +1,80 @@
 import Database = require("better-sqlite3");
+import * as ddl from "./ddl";
 import * as instances from "./instances";
 import { DatabaseSchema, Host } from "./types";
 
-function objectToParameterNames(obj: object, tableSchema: object) {
+function objectToParameterNames(obj: object, tableSchema: object) {}
 
-}
-
-export default class SqliteDb {
+export class SqliteDb {
   appName: string;
+  settings: DatabaseSchema;
+  underlying: Database;
 
-  constructor(appName: string) {
+  constructor(appName: string, settings: DatabaseSchema, underlying: Database) {
     this.appName = appName;
+    this.settings = settings;
+    this.underlying = underlying;
   }
-
-<<<<<<< HEAD
-  async insert(table: string, row: object, db: string, host: Host) {
-    const sqlite = await instances.getDbByName(db);
-    const statement = sqlite.prepare(`INSERT INTO ${table} VALUES `)
-    statement.run(row);
-  }
-
-  async update(host: Host) {
-
-  }
-
-  async del(host: Host) {
-
-  }
-
-  async query(host: Host) {
-
-=======
-  async insert(table: string, row: object, host: Host) {
-    return host.write({
-      type: table,
-      ...row
-    });
-  }
-
-  async update(table: string, fields: object, host: Host) {
-    return host.write({
-      type: table,
-      ...fields
-    });
-  }
-
-  async del(table: string, id: string, host: Host) {
-    return host.write({
-      type: table,
-    })
-  }
-
-  async query(host: Host) {
-    
->>>>>>> 0e28bbbb7f44bf81f9335f7c57d0cea8e14d6418
-  }
-
-  /*
-    ScuttleKit transactions are a little different from a regular database transaction.
-    It simply means that the writes cannot be read until a completeTransaction() call is written to the log.
-    If completeTransaction() was never called, or if discardTransaction() is called, those writes will never be seen.
-  */
-  async createTransaction(transactionId: string, host: Host) {}
-
-  async completeTransaction(transactionId: string, host: Host) {}
-
-  async discardTransaction(transactionId: string, host: Host) {}
 }
+
+/*
+    Create all the tables in db settings. And finally write the settings into the system table.
+    The system table is a special table named "scuttlekit_system" which holds key-value pairs.
+    The settings are stored with the key "settings".
+  */
+export async function createDatabase(
+  appName: string,
+  settings: DatabaseSchema
+) {
+  const underlying = new Database(appName);
+
+  for (const tableName of Object.keys(settings.tables)) {
+    const table = settings.tables[tableName];
+    await ddl.createTable(table, underlying);
+  }
+
+  await ddl.createSystemTable({ settings }, underlying);
+  return new SqliteDb(appName, settings, underlying);
+}
+
+/*
+  Load an existing Database. Throw an error if the database wasn't initialized previously.
+*/
+export async function load(appName: string) {
+  const underlying = new Database(appName);
+  const loadSettingsQuery = underlying.prepare(
+    "SELECT value FROM scuttlekit_settings WHERE key = 'settings'"
+  );
+  const settings = underlying.run(loadSettingsQuery);
+  return new SqliteDb(appName, settings, underlying);
+}
+
+
+async function insert(table: string, row: object, db: string, host: Host) {
+  const sqlite = await instances.getDbByName(db);
+  const statement = sqlite.prepare(`INSERT INTO ${table} VALUES `);
+  statement.run(row);
+}
+
+/*  
+
+*/
+async function update(host: Host) {}
+
+async function del(host: Host) {}
+
+async function query(host: Host) {}
+
+/*
+  ScuttleKit transactions are a little different from a regular database transaction.
+  It simply means that the writes cannot be read until a completeTransaction() call is written to the log.
+  If completeTransaction() was never called, or if discardTransaction() is called, those writes will never be seen.
+*/
+async function createTransaction(transactionId: string, host: Host) {}
+
+async function completeTransaction(transactionId: string, host: Host) {}
+
+async function discardTransaction(transactionId: string, host: Host) {}
 
 /*
   This creates a database.
