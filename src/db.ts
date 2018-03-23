@@ -1,21 +1,9 @@
 import Database = require("better-sqlite3");
 import * as ddl from "./ddl";
 import * as instances from "./instances";
-import { DatabaseSchema, Host } from "./types";
+import { DatabaseSchema, Host, LogEntry } from "./types";
 
 function objectToParameterNames(obj: object, tableSchema: object) {}
-
-export class SqliteDb {
-  appName: string;
-  settings: DatabaseSchema;
-  underlying: Database;
-
-  constructor(appName: string, settings: DatabaseSchema, underlying: Database) {
-    this.appName = appName;
-    this.settings = settings;
-    this.underlying = underlying;
-  }
-}
 
 /*
     Create all the tables in db settings. And finally write the settings into the system table.
@@ -27,34 +15,67 @@ export async function createDatabase(
   settings: DatabaseSchema,
   host: Host
 ) {
-  const underlying = new Database(appName);
+  const sqlite = await instances.getDb(appName);
 
   for (const tableName of Object.keys(settings.tables)) {
     const table = settings.tables[tableName];
-    await ddl.createTable(table, underlying);
+    await ddl.createTable(table, sqlite);
   }
 
-  await ddl.createSystemTable({ settings }, underlying);
-  return new SqliteDb(appName, settings, underlying);
+  await ddl.createSystemTable({ settings }, sqlite);
+
+  const db = new SqliteDb(appName, settings);
+
+  // Register to listen to writes on the host.
+  host.onWrite((record: object) => onWrite(record, db, host));
+
+  return db;
 }
 
 /*
   Load an existing Database. Throw an error if the database wasn't initialized previously.
 */
 export async function load(appName: string, host: Host) {
-  const underlying = new Database(appName);
-  const loadSettingsQuery = underlying.prepare(
+  const sqlite = await instances.getDb(appName);
+
+  const loadSettingsQuery = sqlite.prepare(
     "SELECT value FROM scuttlekit_settings WHERE key = 'settings'"
   );
-  const settings = underlying.run(loadSettingsQuery);
-  return new SqliteDb(appName, settings, underlying);
+
+  const result = loadSettingsQuery.run(loadSettingsQuery);
+  const db = new SqliteDb(appName, settings);
+
+  // Register to listen to writes on the host.
+  host.onWrite((record: object) => onWrite(record, db, host));
+
+  return db;
 }
 
+/*
+  The SqliteDb interface, which clients use to access DB functionality.  
+*/
+export class SqliteDb {
+  appName: string;
+  settings: DatabaseSchema;
 
-async function insert(table: string, row: object, db: string, host: Host) {
-  const sqlite = await instances.getDbByName(db);
+  constructor(appName: string, settings: DatabaseSchema) {
+    this.appName = appName;
+    this.settings = settings;
+  }
+
+  /*
+    INSERT...
+  */
+  async insert(table: string, row: object, db: string, host: Host) {
+    return await insert(table, row, this, host);
+  }
+}
+
+async function insert(table: string, row: object, db: SqliteDb, host: Host) {
+  const sqlite = await instances.getDb(db.appName);
   const statement = sqlite.prepare(`INSERT INTO ${table} VALUES `);
-  statement.run(row);
+  const result = statement.run(row);
+  return result as any;
 }
 
 /*  
@@ -65,6 +86,11 @@ async function update(host: Host) {}
 async function del(host: Host) {}
 
 async function query(host: Host) {}
+
+async function onWrite(record: LogEntry, db: SqliteDb, host: Host) {
+  if (record.type.startsWith(`${db.appName}-`)) {
+  }
+}
 
 /*
   ScuttleKit transactions are a little different from a regular database transaction.

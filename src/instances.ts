@@ -1,11 +1,11 @@
-import SqliteDb from "./db";
+import Database = require("better-sqlite3");
 
 const dbsByName: {
-  [key: string]: SqliteDb;
+  [key: string]: Database;
 } = {};
 
 export async function getDb(name: string) {
   return (
-    dbsByName[name] || ((dbsByName[name] = new SqliteDb(name)), dbsByName[name])
+    dbsByName[name] || ((dbsByName[name] = new Database(name)), dbsByName[name])
   );
 }

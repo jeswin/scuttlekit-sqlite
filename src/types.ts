@@ -14,7 +14,7 @@ export interface TableSchema {
   };
   encrypted: boolean;
   primaryKey: string;
-  foreignKeys: ForeignKey[]
+  foreignKeys: ForeignKey[];
 }
 
 export interface DatabaseSchema {
@@ -23,6 +23,14 @@ export interface DatabaseSchema {
   };
 }
 
-export interface Host {
-  write(record: object) : Promise<void> 
+export interface LogEntry {
+  type: string,
+  [key: string]: any
 }
+
+export interface Host {
+  write(record: object): Promise<void>;
+  onWrite(cb: (record: object) => void): void;
+}
+
+
