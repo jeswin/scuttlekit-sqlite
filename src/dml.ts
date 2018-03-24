@@ -1,7 +1,7 @@
 import Database = require("better-sqlite3");
 import * as ddl from "./ddl";
 import { getDb } from "./native-db";
-import { DatabaseSchema, Host, LogEntry } from "./types";
+import { DatabaseSchema, Host, LogEntry, Operation } from "./types";
 import SqliteDb from "./sqlitedb";
 
 function randomId() {
@@ -17,17 +17,21 @@ function getTableName(appName: string, table: string) {
   return `${appName}-${table}`;
 }
 
-async function insert(table: string, row: object, db: SqliteDb, host: Host) {
+async function insert(table: string, row: object, transactionId: string, db: SqliteDb, host: Host) {
+  const tableSchema = db.settings.tables[table];
   const nativeDb = await getDb(db.appName);
-  await host.write({
-    type: getTableName(db.appName, table),
-    value: {
-      content: {
-        ...row,
-        id: randomId()
+  await host.write(
+    {
+      ...row,
+      [tableSchema.primaryKey]: randomId(),
+      type: getTableName(db.appName, table),
+      __meta: {
+        permissions,
+        transactionId, 
+        operation: Operation.Insert
       }
     }
-  });
+  );
   const statement = nativeDb.prepare(`INSERT INTO ${table} VALUES `);
   const result = statement.run(row);
   return result as any;

@@ -24,13 +24,32 @@ export interface DatabaseSchema {
 }
 
 export interface LogEntry {
-  type: string,
-  [key: string]: any
+  type: string;
+  [key: string]: any;
 }
 
+export type WriteParams = {
+  operation: Operation;
+};
+
 export interface Host {
-  write(record: object): Promise<void>;
+  write(record: object, params?: WriteParams): Promise<void>;
   onWrite(cb: (record: object) => void): void;
 }
 
+export enum Operation {
+  Insert = "Insert",
+  Update = "Update",
+  Del = "Del"
+}
 
+export enum PermissionType {
+  Read = "Read",
+  Write = "Write",
+  ReadWrite = "ReadWrite"
+}
+
+export interface Permission {
+  user: string,
+  access: string
+}
