@@ -11,10 +11,12 @@ import { insert, update, del, query } from "./db";
 export default class SqliteDb {
   appName: string;
   settings: DatabaseSchema;
+  userId: string;
 
-  constructor(appName: string, settings: DatabaseSchema) {
+  constructor(appName: string, settings: DatabaseSchema, userId: string) {
     this.appName = appName;
     this.settings = settings;
+    this.userId = userId;
   }
 
   async query(query: string, host: Host) {
@@ -28,7 +30,7 @@ export default class SqliteDb {
   async update(table: string, row: object, host: Host) {
     return await insert(table, row, this, host);
   }
-  
+
   async del(table: string, row: object, host: Host) {
     return await insert(table, row, this, host);
   }

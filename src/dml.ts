@@ -1,54 +1,121 @@
 import Database = require("better-sqlite3");
 import * as ddl from "./ddl";
-import { getDb } from "./native-db";
-import { DatabaseSchema, Host, LogEntry, Operation } from "./types";
+import { DatabaseSchema, Host, LogEntry, Operation, Permission } from "./types";
 import SqliteDb from "./sqlitedb";
-
-function randomId() {
-  const length = 31;
-  const chars = "0123456789abcdefghijklmnopqrstuvwxyz";
-  var result = "";
-  for (var i = length; i > 0; --i)
-    result += chars[Math.floor(Math.random() * chars.length)];
-  return "n" + result;
-}
+import exception from "./exception";
 
 function getTableName(appName: string, table: string) {
   return `${appName}-${table}`;
 }
 
-async function insert(table: string, row: object, transactionId: string, db: SqliteDb, host: Host) {
-  const tableSchema = db.settings.tables[table];
-  const nativeDb = await getDb(db.appName);
-  await host.write(
-    {
-      ...row,
-      [tableSchema.primaryKey]: randomId(),
-      type: getTableName(db.appName, table),
-      __meta: {
-        permissions,
-        transactionId, 
-        operation: Operation.Insert
-      }
-    }
-  );
-  const statement = nativeDb.prepare(`INSERT INTO ${table} VALUES `);
-  const result = statement.run(row);
-  return result as any;
+export type RowEditOptions = {
+  permissions: Permission[];
+  transactionId: string;
+};
+
+function getUserIdFromRowId(id: string) {
+  return id.split("_")[1];
 }
 
-/*  
+async function insert(
+  table: string,
+  row: object,
+  options: RowEditOptions,
+  db: SqliteDb,
+  host: Host
+) {
+  const tableSchema = db.settings.tables[table];
+  const primaryKey: string = (row as any)[tableSchema.primaryKey];
+  const [rowId, userId] = primaryKey.split("_");
 
-*/
-async function update(host: Host) {}
+  return userId === db.userId
+    ? await (async () => {
+        const existingRow = await getById(table, primaryKey, db, host);
+        return !existingRow
+          ? await (async () => {
+              return await host.write({
+                ...row,
+                type: getTableName(db.appName, table),
+                __meta: {
+                  permissions: options.permissions,
+                  transactionId: options.transactionId,
+                  operation: Operation.Insert
+                }
+              });
+            })
+          : exception(
+              `The primary key ${primaryKey} already exists on table ${table}.`
+            );
+      })()
+    : exception(
+        `Invalid userId. The primaryKey should be suffixed with the id of the current user.`
+      );
+}
 
-async function del(host: Host) {}
+async function update(
+  table: string,
+  row: object,
+  options: RowEditOptions,
+  db: SqliteDb,
+  host: Host
+) {
+  const tableSchema = db.settings.tables[table];
+  const primaryKey: string = (row as any)[tableSchema.primaryKey];
 
-async function query(host: Host) {}
+  return primaryKey
+    ? await host.write({
+        ...row,
+        type: getTableName(db.appName, table),
+        __meta: {
+          primaryKey,
+          permissions: options.permissions,
+          transactionId: options.transactionId,
+          operation: Operation.Update
+        }
+      })
+    : exception(
+        `The table ${table} does not contain a row with primary key ${primaryKey}.`
+      );
+}
 
-async function onWrite(record: LogEntry, db: SqliteDb, host: Host) {
-  if (record.type.startsWith(`${db.appName}-`)) {
-  }
+export type RowDeleteOptions = {
+  transactionId: string;
+};
+
+async function del(
+  table: string,
+  primaryKey: string,
+  options: RowDeleteOptions,
+  db: SqliteDb,
+  host: Host
+) {
+  const tableSchema = db.settings.tables[table];
+
+  return primaryKey
+    ? await host.write({
+        type: getTableName(db.appName, table),
+        __meta: {
+          primaryKey,
+          transactionId: options.transactionId,
+          operation: Operation.Del
+        }
+      })
+    : exception(
+        `The table ${table} does not contain a row with primary key ${primaryKey}.`
+      );
+}
+
+async function query(host: Host) {
+  
+}
+
+async function getById(
+  table: string,
+  primaryKey: string,
+  db: SqliteDb,
+  host: Host
+) {
+
 }
 
 /*

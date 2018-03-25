@@ -23,8 +23,15 @@ export interface DatabaseSchema {
   };
 }
 
+export interface Meta {
+  permissions: Permission[];
+  transactionId: string;
+  operation: Operation;
+}
+
 export interface LogEntry {
   type: string;
+  __meta: Meta;
   [key: string]: any;
 }
 
@@ -50,6 +57,6 @@ export enum PermissionType {
 }
 
 export interface Permission {
-  user: string,
-  access: string
+  user: string;
+  access: string;
 }
