@@ -37,6 +37,7 @@ async function insert(
                 ...row,
                 type: getTableName(db.appName, table),
                 __meta: {
+                  table,
                   permissions: options.permissions,
                   transactionId: options.transactionId,
                   operation: Operation.Insert
@@ -67,6 +68,7 @@ async function update(
         ...row,
         type: getTableName(db.appName, table),
         __meta: {
+          table,
           primaryKey,
           permissions: options.permissions,
           transactionId: options.transactionId,
@@ -95,6 +97,7 @@ async function del(
     ? await host.write({
         type: getTableName(db.appName, table),
         __meta: {
+          table,
           primaryKey,
           transactionId: options.transactionId,
           operation: Operation.Del
@@ -105,18 +108,14 @@ async function del(
       );
 }
 
-async function query(host: Host) {
-  
-}
+async function query(host: Host) {}
 
 async function getById(
   table: string,
   primaryKey: string,
   db: SqliteDb,
   host: Host
-) {
-
-}
+) {}
 
 /*
   ScuttleKit transactions are a little different from a regular database transaction.

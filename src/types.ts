@@ -24,6 +24,7 @@ export interface DatabaseSchema {
 }
 
 export interface Meta {
+  table: string,
   permissions: Permission[];
   transactionId: string;
   operation: Operation;
