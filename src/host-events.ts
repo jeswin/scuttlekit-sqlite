@@ -1,4 +1,4 @@
-import { LogEntry, Host, Operation } from "./types";
+import { LogEntry, Host, Operation, TableSchema } from "./types";
 import SqliteDb from "./sqlitedb";
 import exception from "./exception";
 import { getDb } from "./native-db";
@@ -18,6 +18,10 @@ export async function onWrite(logEntry: LogEntry, db: SqliteDb, host: Host) {
 
     return await handler(logEntry, db, host);
   }
+}
+
+function getFields(table: TableSchema) {
+  return []
 }
 
 async function onInsert(logEntry: LogEntry, db: SqliteDb, host: Host) {
