@@ -1,3 +1,4 @@
+/* ScuttleKit */
 export interface FieldSchema {
   type: string;
 }
@@ -24,13 +25,14 @@ export interface DatabaseSchema {
 }
 
 export interface Meta {
-  table: string,
-  permissions: Permission[];
+  table: string;
+  permissions?: Permission[];
   transactionId: string;
   operation: Operation;
 }
 
 export interface LogEntry {
+  primaryKey: string;
   type: string;
   __meta: Meta;
   [key: string]: any;
@@ -41,7 +43,7 @@ export type WriteParams = {
 };
 
 export interface Host {
-  write(record: object, params?: WriteParams): Promise<void>;
+  write(record: LogEntry, params?: WriteParams): Promise<void>;
   onWrite(cb: (record: object) => void): void;
 }
 
@@ -58,6 +60,6 @@ export enum PermissionType {
 }
 
 export interface Permission {
-  user: string;
+  feedId: string;
   access: string;
 }

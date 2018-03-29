@@ -11,12 +11,12 @@ import { insert, update, del, query } from "./db";
 export default class SqliteDb {
   appName: string;
   settings: DatabaseSchema;
-  userId: string;
+  feedId: string;
 
-  constructor(appName: string, settings: DatabaseSchema, userId: string) {
+  constructor(appName: string, settings: DatabaseSchema, feedId: string) {
     this.appName = appName;
     this.settings = settings;
-    this.userId = userId;
+    this.feedId = userId;
   }
 
   async query(query: string, host: Host) {

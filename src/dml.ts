@@ -13,7 +13,7 @@ export type RowEditOptions = {
   transactionId: string;
 };
 
-function getUserIdFromRowId(id: string) {
+function getFeedIdFromRowId(id: string) {
   return id.split("_")[1];
 }
 
@@ -26,15 +26,16 @@ async function insert(
 ) {
   const tableSchema = db.settings.tables[table];
   const primaryKey: string = (row as any)[tableSchema.primaryKey];
-  const [rowId, userId] = primaryKey.split("_");
+  const [rowId, feedId] = primaryKey.split("_");
 
-  return userId === db.userId
+  return feedId === db.feedId
     ? await (async () => {
         const existingRow = await getById(table, primaryKey, db, host);
         return !existingRow
           ? await (async () => {
               return await host.write({
                 ...row,
+                primaryKey,
                 type: getTableName(db.appName, table),
                 __meta: {
                   table,
@@ -67,9 +68,9 @@ async function update(
     ? await host.write({
         ...row,
         type: getTableName(db.appName, table),
+        primaryKey,
         __meta: {
           table,
-          primaryKey,
           permissions: options.permissions,
           transactionId: options.transactionId,
           operation: Operation.Update
@@ -96,9 +97,9 @@ async function del(
   return primaryKey
     ? await host.write({
         type: getTableName(db.appName, table),
+        primaryKey,
         __meta: {
           table,
-          primaryKey,
           transactionId: options.transactionId,
           operation: Operation.Del
         }
