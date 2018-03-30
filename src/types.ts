@@ -24,17 +24,25 @@ export interface DatabaseSchema {
   };
 }
 
-export interface Meta {
+export interface RowMeta {
   table: string;
-  permissions?: Permission[];
   transactionId: string;
   operation: Operation;
 }
 
-export interface LogEntry {
+export interface EditMeta extends RowMeta {
+  permissions: Permission[];
+  operation: Operation.Insert | Operation.Update
+}
+
+export interface DeleteMeta extends RowMeta {
+  operation: Operation.Del
+}
+
+export interface LogEntry<TMeta extends RowMeta> {
   primaryKey: string;
   type: string;
-  __meta: Meta;
+  __meta: TMeta;
   [key: string]: any;
 }
 
@@ -42,8 +50,22 @@ export type WriteParams = {
   operation: Operation;
 };
 
+export type DbRow = {
+  fields: DbField[];
+};
+
+export type DbField = {
+  field: string;
+  value: string | number | boolean;
+};
+
+export type QueryResult = {
+  length: number;
+  rows: DbRow[];
+};
+
 export interface Host {
-  write(record: LogEntry, params?: WriteParams): Promise<void>;
+  write(record: LogEntry<RowMeta>, params?: WriteParams): Promise<void>;
   onWrite(cb: (record: object) => void): void;
 }
 
@@ -53,13 +75,7 @@ export enum Operation {
   Del = "Del"
 }
 
-export enum PermissionType {
-  Read = "Read",
-  Write = "Write",
-  ReadWrite = "ReadWrite"
-}
-
 export interface Permission {
   feedId: string;
-  access: string;
+  fields?: string[];
 }

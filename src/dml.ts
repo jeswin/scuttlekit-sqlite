@@ -1,6 +1,15 @@
 import Database = require("better-sqlite3");
 import * as ddl from "./ddl";
-import { DatabaseSchema, Host, LogEntry, Operation, Permission } from "./types";
+import {
+  DatabaseSchema,
+  Host,
+  LogEntry,
+  Operation,
+  Permission,
+  RowMeta,
+  EditMeta,
+  DeleteMeta
+} from "./types";
 import SqliteDb from "./sqlitedb";
 import exception from "./exception";
 
@@ -42,7 +51,7 @@ async function insert(
                   permissions: options.permissions,
                   transactionId: options.transactionId,
                   operation: Operation.Insert
-                }
+                } as EditMeta
               });
             })
           : exception(
@@ -74,7 +83,7 @@ async function update(
           permissions: options.permissions,
           transactionId: options.transactionId,
           operation: Operation.Update
-        }
+        } as EditMeta
       })
     : exception(
         `The table ${table} does not contain a row with primary key ${primaryKey}.`
@@ -102,7 +111,7 @@ async function del(
           table,
           transactionId: options.transactionId,
           operation: Operation.Del
-        }
+        } as DeleteMeta
       })
     : exception(
         `The table ${table} does not contain a row with primary key ${primaryKey}.`
