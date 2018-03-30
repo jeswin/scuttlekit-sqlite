@@ -9,15 +9,14 @@ import SqliteDb from "./sqlitedb";
 
 export class TransactionalStatement {
   logEntry: LogEntry;
-  inTransaction: boolean;
 
-  constructor(logEntry: LogEntry, inTransaction: boolean) {
+  constructor(logEntry: LogEntry) {
     this.logEntry = logEntry;
-    this.inTransaction = inTransaction;
   }
 }
 
-export async function onWrite(logEntry: LogEntry, db: SqliteDb, host: Host) {
+export async function onWrite(msg: Msg<LogEntry>, db: SqliteDb, host: Host) {
+  const logEntry = msg.value.content;
   if (logEntry.type.startsWith(`${db.appName}-`)) {
     const meta = logEntry.__meta;
 
@@ -30,7 +29,7 @@ export async function onWrite(logEntry: LogEntry, db: SqliteDb, host: Host) {
             ? onDel
             : exception(`Unknown operation ${meta.operation}`);
 
-    return await handler(logEntry, db, host);
+    return await handler(msg, db, host);
   }
 }
 
@@ -54,7 +53,7 @@ function getPrimaryKey<T>(msg: Msg<LogEntry>): [string, string] {
 
 function getPermissionsField(logEntry: LogEntry) {
   /*
-   Permissions are going to look like this:
+   Permissions are going to look like feedId:permissions
     @hxGxqPrplLjRG2vtjQL87abX4QKqeLgCwQpS730nNwE=.ed25519:read,
     @jlaasdewqLjjflkdjfddfkljsdflksjdflfjfjjfk3al=.ed25519:readwrite
   */
@@ -67,7 +66,7 @@ async function onInsert(msg: Msg<LogEntry>, db: SqliteDb, host: Host) {
   const logEntry = msg.value.content;
 
   if (logEntry.__meta.transactionId) {
-    return new TransactionalStatement(logEntry, true);
+    return new TransactionalStatement(logEntry);
   } else {
     const [rowId, feedId] = getPrimaryKey(msg);
     const sqlite = await getDb(db.appName);
@@ -86,8 +85,52 @@ async function onInsert(msg: Msg<LogEntry>, db: SqliteDb, host: Host) {
   }
 }
 
-async function onUpdate(logEntry: LogEntry, db: SqliteDb, host: Host) {}
+async function onUpdate(msg: Msg<LogEntry>, db: SqliteDb, host: Host) {
+  const logEntry = msg.value.content;
 
-async function onDel(logEntry: LogEntry, db: SqliteDb, host: Host) {}
+  if (logEntry.__meta.transactionId) {
+    return new TransactionalStatement(logEntry);
+  } else {
+    const [rowId, feedId] = getPrimaryKey(msg);
+    const sqlite = await getDb(db.appName);
+    const permissionsField = {
+      field: "permissions",
+      value: getPermissionsField(logEntry)
+    };
+    const fields = getFieldsFromRow(logEntry).concat([permissionsField]);
+    const fieldNames = fields.map(f => f.field).join(", ");
+    const values = fields.map(f => f.value);
+    const questionMarks = values.map(_ => "?").join(", ");
+    const insert = sqlite.prepare(
+      `INSERT INTO ${fieldNames} VALUES (${questionMarks})`
+    );
+    return insert.run(values);
+  }
+}
 
-async function onTransactionComplete() {}
+async function onDel(msg: Msg<LogEntry>, db: SqliteDb, host: Host) {
+  const logEntry = msg.value.content;
+
+  if (logEntry.__meta.transactionId) {
+    return new TransactionalStatement(logEntry);
+  } else {
+    const [rowId, feedId] = getPrimaryKey(msg);
+    const sqlite = await getDb(db.appName);
+    const permissionsField = {
+      field: "permissions",
+      value: getPermissionsField(logEntry)
+    };
+    const fields = getFieldsFromRow(logEntry).concat([permissionsField]);
+    const fieldNames = fields.map(f => f.field).join(", ");
+    const values = fields.map(f => f.value);
+    const questionMarks = values.map(_ => "?").join(", ");
+    const insert = sqlite.prepare(
+      `INSERT INTO ${fieldNames} VALUES (${questionMarks})`
+    );
+    return insert.run(values);
+  }
+}
+
+async function onTransactionComplete() {
+
+}
