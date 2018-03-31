@@ -11,7 +11,8 @@ import {
   DbField,
   RowMeta,
   EditMeta,
-  DeleteMeta
+  DeleteMeta,
+  DbRow
 } from "./types";
 import SqliteDb from "./sqlitedb";
 import * as crud from "./crud";
@@ -19,7 +20,7 @@ import * as crud from "./crud";
 export type NonResultType =
   | "AWAIT_TRANSACTION"
   | "AWAIT_INSERTION"
-  | "NO_PERMISSIONS";
+  | "NO_PERMISSION";
 
 export class NonResult {
   type: NonResultType;
@@ -84,7 +85,11 @@ function getPermissionsField(logEntry: LogEntry<EditMeta>) {
   );
 }
 
-async function onInsert(msg: Msg<LogEntry<EditMeta>>, db: SqliteDb, host: Host) {
+async function onInsert(
+  msg: Msg<LogEntry<EditMeta>>,
+  db: SqliteDb,
+  host: Host
+) {
   const logEntry = msg.value.content;
   const table = logEntry.__meta.table;
 
@@ -102,7 +107,34 @@ async function onInsert(msg: Msg<LogEntry<EditMeta>>, db: SqliteDb, host: Host) 
   }
 }
 
-async function onUpdate(msg: Msg<LogEntry<EditMeta>>, db: SqliteDb, host: Host) {
+function getPermissionsFromString(strPerms?: string) {
+  return strPerms
+    ? strPerms.split(";").map(f => {
+        const [feedId, strFields] = f.split(":");
+        return {
+          feedId,
+          fields: strFields.split(",")
+        };
+      })
+    : [];
+}
+
+function getFieldsFromLogEntry(logEntry: LogEntry<any>) {
+  return Object.keys(logEntry).filter(k =>
+    ["primaryKey", "type", "__meta"].includes(k)
+  );
+}
+
+function getFieldValue(row: DbRow, fieldName: string) {
+  const field = row.fields.find(f => f.field === fieldName);
+  return field ? field.value : undefined;
+}
+
+async function onUpdate(
+  msg: Msg<LogEntry<EditMeta>>,
+  db: SqliteDb,
+  host: Host
+) {
   const logEntry = msg.value.content;
   const table = logEntry.__meta.table;
 
@@ -120,42 +152,68 @@ async function onUpdate(msg: Msg<LogEntry<EditMeta>>, db: SqliteDb, host: Host) 
     if (!itemResult.length) {
       return new NonResult("AWAIT_INSERTION", logEntry);
     } else {
+      const row = itemResult.rows[0];
+
       // Gotta check if the author has permissions.
-      const existingRow = itemResult.rows[0];
-      const permissionsField = existingRow.fields.find(
-        f => f.field === "permissions"
-      );
-      const permissions = (permissionsField &&
-        permissionsField.value) as string;
-      const hasPermission = permissions.split(",").some(p => {
-        const [feedId, access] = p.split(":");
-        return feedId === msg.value.author && access === "WRITE";
-        //if (permissions.value === )
-      });
+      const permissionsString = getFieldValue(row, "permissions") as string;
+      const permissions = getPermissionsFromString(permissionsString);
+      const fieldsInUpdate = getFieldsFromLogEntry(logEntry);
+
+      // See if the author has write permissions into all fields in the update,
+      // Or if the author has write permissions into "*"
+      const hasPermission =
+        msg.value.author === db.feedId ||
+        permissions.some(
+          p =>
+            p.feedId === msg.value.author &&
+            (p.fields.includes("*") ||
+              fieldsInUpdate.every(f => p.fields.includes(f)))
+        );
+
+      return hasPermission
+        ? await crud.update()
+        : new NonResult("NO_PERMISSION", logEntry);
     }
   }
 }
 
 async function onDel(msg: Msg<LogEntry<DeleteMeta>>, db: SqliteDb, host: Host) {
   const logEntry = msg.value.content;
+  const table = logEntry.__meta.table;
 
   if (logEntry.__meta.transactionId) {
-    return new NonResult(logEntry);
+    return new NonResult("AWAIT_TRANSACTION", logEntry);
   } else {
-    const [rowId, feedId] = getPrimaryKey(msg);
-    const sqlite = await getDb(db.appName);
-    const permissionsField = {
-      field: "permissions",
-      value: getPermissionsField(logEntry)
-    };
-    const fields = getFieldsFromRow(logEntry).concat([permissionsField]);
-    const fieldNames = fields.map(f => f.field).join(", ");
-    const values = fields.map(f => f.value);
-    const questionMarks = values.map(_ => "?").join(", ");
-    const insert = sqlite.prepare(
-      `INSERT INTO ${fieldNames} VALUES (${questionMarks})`
+    // We have to check if the record exists.
+    // If it doesn't, we'll wait until it appears. If ever.
+    const itemResult = await crud.getByPrimaryKey(
+      table,
+      logEntry.primaryKey,
+      db,
+      host
     );
-    return insert.run(values);
+
+    if (!itemResult.length) {
+      return new NonResult("AWAIT_INSERTION", logEntry);
+    } else {
+      const row = itemResult.rows[0];
+
+      // Gotta check if the author has permissions.
+      const permissionsString = getFieldValue(row, "permissions") as string;
+      const permissions = getPermissionsFromString(permissionsString);
+      const fieldsInUpdate = getFieldsFromLogEntry(logEntry);
+
+      // The author needs * permissions to delete a row
+      const hasPermission =
+        msg.value.author === db.feedId ||
+        permissions.some(
+          p => p.feedId === msg.value.author && p.fields.includes("*")
+        );
+
+      return hasPermission
+        ? await crud.del()
+        : new NonResult("NO_PERMISSION", logEntry);
+    }
   }
 }
 
