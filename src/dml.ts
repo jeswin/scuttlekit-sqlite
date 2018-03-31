@@ -45,9 +45,9 @@ async function insert(
               return await host.write({
                 ...row,
                 primaryKey,
+                table,
                 type: getTableName(db.appName, table),
                 __meta: {
-                  table,
                   permissions: options.permissions,
                   transactionId: options.transactionId,
                   operation: Operation.Insert
@@ -77,9 +77,9 @@ async function update(
     ? await host.write({
         ...row,
         type: getTableName(db.appName, table),
+        table,
         primaryKey,
         __meta: {
-          table,
           permissions: options.permissions,
           transactionId: options.transactionId,
           operation: Operation.Update
@@ -106,9 +106,9 @@ async function del(
   return primaryKey
     ? await host.write({
         type: getTableName(db.appName, table),
+        table,
         primaryKey,
         __meta: {
-          table,
           transactionId: options.transactionId,
           operation: Operation.Del
         } as DeleteMeta

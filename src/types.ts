@@ -1,3 +1,5 @@
+import { Msg } from "./ssb-types";
+
 /* ScuttleKit */
 export interface FieldSchema {
   type: string;
@@ -25,7 +27,6 @@ export interface DatabaseSchema {
 }
 
 export interface RowMeta {
-  table: string;
   transactionId: string;
   operation: Operation;
 }
@@ -40,6 +41,7 @@ export interface DeleteMeta extends RowMeta {
 }
 
 export interface LogEntry<TMeta extends RowMeta> {
+  table: string;
   primaryKey: string;
   type: string;
   __meta: TMeta;
@@ -64,11 +66,6 @@ export type QueryResult = {
   rows: DbRow[];
 };
 
-export interface Host {
-  write(record: LogEntry<RowMeta>, params?: WriteParams): Promise<void>;
-  onWrite(cb: (record: object) => void): void;
-}
-
 export enum Operation {
   Insert = "Insert",
   Update = "Update",
@@ -78,4 +75,10 @@ export enum Operation {
 export interface Permission {
   feedId: string;
   fields?: string[];
+}
+
+export interface Host {
+  write(record: LogEntry<RowMeta>, params?: WriteParams): Promise<void>;
+  onWrite(cb: (record: object) => void): void;
+  getMessagesByPrimaryKey() : Msg<LogEntry<RowMeta>>[]
 }
