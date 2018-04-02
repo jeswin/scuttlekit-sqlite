@@ -97,6 +97,11 @@ function updateRowFromMessage(
   const permissions = getPermissionsFromString(row.__permissions);
   const userPermissions = permissions.find(p => p.feedId === msg.value.author);
   
+  for (const key of Object.keys(logEntry)) {
+    if (key !== "__meta" && key !== "type") {
+      result[key] = logEntry[key];
+    }
+  }
 }
 
 async function mergeMessagesIntoRow(
