@@ -91,15 +91,33 @@ function constructRowFromMessage(
 function updateRowFromMessage(
   row: IDbRow,
   msg: Msg<ILogEntry<IRowMeta>>,
-  timestamp: number
+  timestamp: number,
+  isCurrentUser: boolean
 ) {
   const logEntry = msg.value.content as ILogEntry<IEditMeta>;
   const permissions = getPermissionsFromString(row.__permissions);
   const userPermissions = permissions.find(p => p.feedId === msg.value.author);
-  
+
   for (const key of Object.keys(logEntry)) {
     if (key !== "__meta" && key !== "type") {
-      result[key] = logEntry[key];
+      // Check if we have permissions to update
+      if (
+        isCurrentUser ||
+        (userPermissions &&
+          ["*", key].some(f => userPermissions.fields.includes(f)))
+      ) {
+        row[key] = logEntry[key];
+      }
+    }
+  }
+
+  // Updating permissions; you gotta be the owner.
+  if (logEntry.__meta.permissions.length) {
+    if (
+      isCurrentUser ||
+      (userPermissions && userPermissions.fields.includes("*"))
+    ) {
+      row.__permissions = getPermissionsField();
     }
   }
 }
@@ -191,98 +209,10 @@ interface ICrudOptions {
   existingRow: IDbRow;
 }
 
-function mergeRowOps();
-
-async function doInsert(
-  msg: Msg<ILogEntry<IEditMeta>>,
-  db: SqliteDb,
-  host: IHost,
-  options: ICrudOptions
-) {
-  const logEntry = msg.value.content;
-
-  if (options.existingRow) {
-    return new NonResult("ROW_EXISTS", logEntry);
-  } else {
-    const [rowId, feedId] = parsePrimaryKeyForInsertion(msg);
-    const sqlite = await getDb(db.appName);
-    const permissionsField = {
-      field: "permissions",
-      value: getPermissionsField(logEntry)
-    };
-    const fields = getFieldsFromRow(logEntry).concat([permissionsField]);
-    const result = await crud.insert(table, fields, db, host);
-  }
+function mergeRowOps() {
+  return;
 }
 
-async function doUpdate() {
-  // We have to check if the record exists.
-  // If it doesn't, we'll wait until it appears. If ever.
-  const itemResult = await crud.getByPrimaryKey(
-    table,
-    logEntry.primaryKey,
-    db,
-    host
-  );
-  if (!itemResult.length) {
-    return new NonResult("AWAIT_INSERTION", logEntry);
-  } else {
-    const row = itemResult.rows[0];
-
-    // Gotta check if the author has permissions.
-    const permissionsString = getFieldValue(row, "permissions") as string;
-    const permissions = getPermissionsFromString(permissionsString);
-    const fieldsInUpdate = getFieldsFromLogEntry(logEntry);
-
-    // See if the author has write permissions into all fields in the update,
-    // Or if the author has write permissions into "*"
-    const hasPermission =
-      msg.value.author === db.feedId ||
-      permissions.some(
-        p =>
-          p.feedId === msg.value.author &&
-          (p.fields.includes("*") ||
-            fieldsInUpdate.every(f => p.fields.includes(f)))
-      );
-
-    return hasPermission
-      ? await crud.update()
-      : new NonResult("NO_PERMISSION", logEntry);
-  }
-}
-
-async function doDel() {
-  // We have to check if the record exists.
-  // If it doesn't, we'll wait until it appears. If ever.
-  const itemResult = await crud.getByPrimaryKey(
-    table,
-    logEntry.primaryKey,
-    db,
-    host
-  );
-
-  if (!itemResult.length) {
-    return new NonResult("AWAIT_INSERTION", logEntry);
-  } else {
-    const row = itemResult.rows[0];
-
-    // Gotta check if the author has permissions.
-    const permissionsString = getFieldValue(row, "permissions") as string;
-    const permissions = getPermissionsFromString(permissionsString);
-    const fieldsInUpdate = getFieldsFromLogEntry(logEntry);
-
-    // The author needs * permissions to delete a row
-    const hasPermission =
-      msg.value.author === db.feedId ||
-      permissions.some(
-        p => p.feedId === msg.value.author && p.fields.includes("*")
-      );
-
-    return hasPermission
-      ? await crud.del()
-      : new NonResult("NO_PERMISSION", logEntry);
-  }
-}
 
 function getPermissionsFromString(strPerms?: string) {
   return strPerms
