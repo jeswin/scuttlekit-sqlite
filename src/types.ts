@@ -1,70 +1,68 @@
 import { Msg } from "./ssb-types";
 
 /* ScuttleKit */
-export interface FieldSchema {
+export interface IFieldSchema {
   type: string;
 }
 
-export interface ForeignKey {
+export interface IForeignKey {
   foreignKey: string;
   primaryKey: string;
   table: string;
 }
 
-export interface TableSchema {
+export interface ITableSchema {
   fields: {
-    [key: string]: FieldSchema;
+    [key: string]: IFieldSchema;
   };
   encrypted: boolean;
   primaryKey: string;
-  foreignKeys: ForeignKey[];
+  foreignKeys: IForeignKey[];
 }
 
-export interface DatabaseSchema {
+export interface IDatabaseSchema {
   tables: {
-    [key: string]: TableSchema;
+    [key: string]: ITableSchema;
   };
 }
 
-export interface RowMeta {
+export interface IRowMeta {
+  table: string;
+  primaryKey: string;
   transactionId: string;
   operation: Operation;
 }
 
-export interface EditMeta extends RowMeta {
-  permissions: Permission[];
-  operation: Operation.Insert | Operation.Update
+export interface IEditMeta extends IRowMeta {
+  permissions: IPermission[];
+  operation: Operation.Insert | Operation.Update;
 }
 
-export interface DeleteMeta extends RowMeta {
-  operation: Operation.Del
+export interface IDeleteMeta extends IRowMeta {
+  operation: Operation.Del;
 }
 
-export interface LogEntry<TMeta extends RowMeta> {
-  table: string;
-  primaryKey: string;
+export interface ILogEntry<TMeta extends IRowMeta> {
   type: string;
   __meta: TMeta;
   [key: string]: any;
 }
 
-export type WriteParams = {
+export interface IWriteParams {
   operation: Operation;
-};
+}
 
-export type DbRow = {
-  fields: DbField[];
-};
+export interface IDbRow {
+  __deleted: boolean;
+  __permissions: string;
+  __timestamp: number;
+  [name: string]: string | number | boolean;
+}
 
-export type DbField = {
-  field: string;
-  value: string | number | boolean;
-};
-
-export type QueryResult = {
+export interface IQueryResult {
   length: number;
-  rows: DbRow[];
-};
+  rows: IDbRow[];
+}
 
 export enum Operation {
   Insert = "Insert",
@@ -72,13 +70,16 @@ export enum Operation {
   Del = "Del"
 }
 
-export interface Permission {
+export interface IPermission {
   feedId: string;
   fields?: string[];
 }
 
-export interface Host {
-  write(record: LogEntry<RowMeta>, params?: WriteParams): Promise<void>;
+export interface IHost {
+  write(record: ILogEntry<IRowMeta>, params?: IWriteParams): Promise<void>;
   onWrite(cb: (record: object) => void): void;
-  getMessagesByPrimaryKey() : Msg<LogEntry<RowMeta>>[]
+  getMessagesByPrimaryKey(
+    table: string,
+    primaryKey: string
+  ): Msg<ILogEntry<IRowMeta>>[];
 }

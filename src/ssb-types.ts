@@ -24,9 +24,8 @@ export type Msg<C> = {
     author: FeedId;
     sequence: number;
     timestamp: number;
-    hash: 'sha256';
+    hash: "sha256";
     content: C;
     signature: string;
   };
-  timestamp: number;
 };

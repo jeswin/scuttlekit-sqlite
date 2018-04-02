@@ -1,21 +1,21 @@
 import SqliteDb from "./sqlitedb";
-import { DbField, Host, QueryResult } from "./types";
+import { IDbField, IHost, IQueryResult } from "./types";
 import { getDb } from "./native-db";
 
 export async function getByPrimaryKey(
   table: string,
   primaryKey: string,
   db: SqliteDb,
-  host: Host
+  host: IHost
 ) {
-  return { length: 100, rows: [{ fields: [] }] } as QueryResult;
+  return { length: 100, rows: [{ __timestamp: 0 }] } as IQueryResult;
 }
 
 export async function insert(
   table: string,
-  fields: DbField[],
+  fields: IDbField[],
   db: SqliteDb,
-  host: Host
+  host: IHost
 ) {
   const sqlite = await getDb(db.appName);
   const fieldNames = fields.map(f => f.field).join(", ");
@@ -29,9 +29,9 @@ export async function insert(
 
 export async function update(
   table: string,
-  fields: DbField[],
+  fields: IDbField[],
   db: SqliteDb,
-  host: Host
+  host: IHost
 ) {
   const sqlite = await getDb(db.appName);
   const fieldNames = fields.map(f => f.field).join(", ");
@@ -45,9 +45,9 @@ export async function update(
 
 export async function del(
   table: string,
-  fields: DbField[],
+  fields: IDbField[],
   db: SqliteDb,
-  host: Host
+  host: IHost
 ) {
   const sqlite = await getDb(db.appName);
   const fieldNames = fields.map(f => f.field).join(", ");

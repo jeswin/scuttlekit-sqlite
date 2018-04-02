@@ -6,7 +6,9 @@
     "arrow-parens": false,
     "trailing-comma": false,
     "no-empty": false,
-    "member-access": false
+    "member-access": false,
+    "array-type": false,
+    "no-trailing-whitespace": false
   },
   "rulesDirectory": []
 }

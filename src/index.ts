@@ -1,4 +1,4 @@
-import { Host, DatabaseSchema } from "./types";
+import { IHost, IDatabaseSchema } from "./types";
 import SqliteDb from "./sqlitedb";
 import { getDb } from "./native-db";
 import * as ddl from "./ddl";
@@ -11,8 +11,8 @@ import * as hostEvents from "./host-events";
 */
 async function createDatabase(
   appName: string,
-  settings: DatabaseSchema,
-  host: Host
+  settings: IDatabaseSchema,
+  host: IHost
 ) {
   const sqlite = await getDb(appName);
 
@@ -34,7 +34,7 @@ async function createDatabase(
 /*
   Load an existing Database. Throw an error if the database wasn't initialized previously.
 */
-async function load(appName: string, host: Host) {
+async function load(appName: string, host: IHost) {
   const sqlite = await getDb(appName);
 
   const loadSettingsQuery = sqlite.prepare(
@@ -56,8 +56,8 @@ async function load(appName: string, host: Host) {
 */
 export async function register(
   appName: string,
-  settings: DatabaseSchema,
-  host: Host
+  settings: IDatabaseSchema,
+  host: IHost
 ): Promise<SqliteDb> {
   return await createDatabase(appName, settings, host);
 }
@@ -67,6 +67,6 @@ export async function register(
   This may be called by the client app multiple times; so we initialize the database connection and cache it.
   There may also be multiple client apps speaking to us; so the db connection cache will hold multiple databases.
 */
-export async function init(appName: string, host: Host): Promise<SqliteDb> {
+export async function init(appName: string, host: IHost): Promise<SqliteDb> {
   return await load(appName, host);
 }

@@ -1,26 +1,26 @@
 import Database = require("better-sqlite3");
 import * as ddl from "./ddl";
-import {
-  DatabaseSchema,
-  Host,
-  LogEntry,
-  Operation,
-  Permission,
-  RowMeta,
-  EditMeta,
-  DeleteMeta
-} from "./types";
-import SqliteDb from "./sqlitedb";
 import exception from "./exception";
+import SqliteDb from "./sqlitedb";
+import {
+  IDatabaseSchema,
+  IDeleteMeta,
+  IEditMeta,
+  IHost,
+  ILogEntry,
+  IPermission,
+  IRowMeta,
+  Operation
+} from "./types";
 
 function getTableName(appName: string, table: string) {
   return `${appName}-${table}`;
 }
 
-export type RowEditOptions = {
-  permissions: Permission[];
+export interface IRowEditOptions {
+  permissions: IPermission[];
   transactionId: string;
-};
+}
 
 function getFeedIdFromRowId(id: string) {
   return id.split("_")[1];
@@ -29,9 +29,9 @@ function getFeedIdFromRowId(id: string) {
 async function insert(
   table: string,
   row: object,
-  options: RowEditOptions,
+  options: IRowEditOptions,
   db: SqliteDb,
-  host: Host
+  host: IHost
 ) {
   const tableSchema = db.settings.tables[table];
   const primaryKey: string = (row as any)[tableSchema.primaryKey];
@@ -44,14 +44,14 @@ async function insert(
           ? await (async () => {
               return await host.write({
                 ...row,
+                __meta: {
+                  operation: Operation.Insert,
+                  permissions: options.permissions,
+                  transactionId: options.transactionId
+                } as IEditMeta,
                 primaryKey,
                 table,
-                type: getTableName(db.appName, table),
-                __meta: {
-                  permissions: options.permissions,
-                  transactionId: options.transactionId,
-                  operation: Operation.Insert
-                } as EditMeta
+                type: getTableName(db.appName, table)
               });
             })
           : exception(
@@ -66,9 +66,9 @@ async function insert(
 async function update(
   table: string,
   row: object,
-  options: RowEditOptions,
+  options: IRowEditOptions,
   db: SqliteDb,
-  host: Host
+  host: IHost
 ) {
   const tableSchema = db.settings.tables[table];
   const primaryKey: string = (row as any)[tableSchema.primaryKey];
@@ -76,55 +76,55 @@ async function update(
   return primaryKey
     ? await host.write({
         ...row,
-        type: getTableName(db.appName, table),
-        table,
-        primaryKey,
         __meta: {
+          operation: Operation.Update,
           permissions: options.permissions,
-          transactionId: options.transactionId,
-          operation: Operation.Update
-        } as EditMeta
+          transactionId: options.transactionId
+        } as IEditMeta,
+        primaryKey,
+        table,
+        type: getTableName(db.appName, table)
       })
     : exception(
         `The table ${table} does not contain a row with primary key ${primaryKey}.`
       );
 }
 
-export type RowDeleteOptions = {
+export interface IRowDeleteOptions {
   transactionId: string;
-};
+}
 
 async function del(
   table: string,
   primaryKey: string,
-  options: RowDeleteOptions,
+  options: IRowDeleteOptions,
   db: SqliteDb,
-  host: Host
+  host: IHost
 ) {
   const tableSchema = db.settings.tables[table];
 
   return primaryKey
     ? await host.write({
-        type: getTableName(db.appName, table),
-        table,
-        primaryKey,
         __meta: {
-          transactionId: options.transactionId,
-          operation: Operation.Del
-        } as DeleteMeta
+          operation: Operation.Del,
+          transactionId: options.transactionId
+        } as IDeleteMeta,
+        primaryKey,
+        table,
+        type: getTableName(db.appName, table)
       })
     : exception(
         `The table ${table} does not contain a row with primary key ${primaryKey}.`
       );
 }
 
-async function query(host: Host) {}
+async function query(host: IHost) {}
 
 async function getById(
   table: string,
   primaryKey: string,
   db: SqliteDb,
-  host: Host
+  host: IHost
 ) {}
 
 /*
@@ -132,6 +132,6 @@ async function getById(
   It simply means that the writes cannot be read until a completeTransaction() call is written to the log.
   If completeTransaction() was never called, or if discardTransaction() is called, those writes will never be seen.
 */
-async function createTransaction(transactionId: string, host: Host) {}
+async function createTransaction(transactionId: string, host: IHost) {}
 
-async function completeTransaction(transactionId: string, host: Host) {}
+async function completeTransaction(transactionId: string, host: IHost) {}
