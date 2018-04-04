@@ -33,15 +33,21 @@ export async function mergeMessagesIntoRow(
 
   const logEntry = msg.value.content;
 
-  function loop(row: IDbRow | undefined, msgs: Msg<ILogEntry<IRowMeta>>[]) {
+  function loop(
+    row: IDbRow | undefined,
+    msgs: Msg<ILogEntry<IRowMeta>>[]
+  ): MergeResult | undefined {
     const [current, ...rest] = msgs;
     return rest.length
       ? logEntry.__meta.operation === Operation.Insert
-        ? loop(insert(current, existsInDb), rest)
+        ? // If row exists or has an invalid key, skip.
+          !row && isValidPrimaryKey()
+          ? loop(insert(current, existsInDb), rest)
+          : loop(row, rest)
         : logEntry.__meta.operation === Operation.Update
           ? row && hasUpdatePermissions()
             ? loop(update(current, existsInDb), rest)
-            : // If row does not exist or no permissions, treat as an invalid instruction. Skip.
+            : // If row does not exist or no permissions, skip.
               loop(row, rest)
           : logEntry.__meta.operation === Operation.Del
             ? // Delete if row exists in db and you have delete permissions
@@ -50,19 +56,15 @@ export async function mergeMessagesIntoRow(
               : // if row not in db and was just created, return empty.
                 row
                 ? undefined
-                : // If row doesn't exist, treat as an invalid instruction. Skip.
+                : // If row doesn't exist, skip.
                   loop(row, rest)
             : loop(row, rest)
-      : row;
+      : row
+        ? existsInDb ? new MergeToUpdate(row) : new MergeToInsert(row)
+        : undefined;
   }
 
-  const row = loop(existingRow, messages);
-
-  return row
-    ? isDeleted
-      ? existsInDb ? new MergeToDelete(primaryKey) : undefined
-      : existsInDb ? new MergeToUpdate(row) : new MergeToInsert(row)
-    : undefined;
+  return loop(existingRow, messages);
 }
 
 function insert(
