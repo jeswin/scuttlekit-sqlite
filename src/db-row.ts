@@ -28,10 +28,9 @@ export function getFieldValue(row: IDbRow, fieldName: string) {
 }
 
 export function constructRowFromMessage(
-  msg: Msg<ILogEntry<IRowMeta>>,
+  logEntry: ILogEntry<IEditMeta>,
   timestamp: number
 ): IDbRow {
-  const logEntry = msg.value.content as ILogEntry<IEditMeta>;
   const result: any = {};
   for (const key of Object.keys(logEntry)) {
     if (key !== "__meta" && key !== "type") {
@@ -46,11 +45,10 @@ export function constructRowFromMessage(
 
 export function updateRowFromMessage(
   row: IDbRow,
-  msg: Msg<ILogEntry<IEditMeta>>,
+  logEntry: ILogEntry<IEditMeta>,
   timestamp: number,
   isCurrentUser: boolean
 ) {
-  const logEntry = msg.value.content;
   const permissions = getPermissionsFromString(row.__permissions);
   const userPermissions = permissions.find(p => p.feedId === msg.value.author);
 

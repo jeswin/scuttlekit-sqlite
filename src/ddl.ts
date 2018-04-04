@@ -4,10 +4,10 @@ import { ITableSchema, IDatabaseSchema } from "./types";
 export async function createTable(table: ITableSchema, underlying: Database) {}
 
 export type SystemTableOptions = {
-  settings: IDatabaseSchema;
+  schema: IDatabaseSchema;
 };
 
 export async function createSystemTable(
-  { settings }: SystemTableOptions,
+  { schema }: SystemTableOptions,
   underlying: Database
 ) {}

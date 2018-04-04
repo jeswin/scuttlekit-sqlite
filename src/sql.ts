@@ -5,18 +5,12 @@ import { IHost, IQueryResult, IDbRow } from "./types";
 export async function getByPrimaryKey(
   table: string,
   primaryKey: string,
-  db: SqliteDb,
-  host: IHost
+  db: SqliteDb
 ) {
   return { length: 100, rows: [{ __timestamp: 0 }] } as IQueryResult;
 }
 
-export async function insert(
-  table: string,
-  row: IDbRow,
-  db: SqliteDb,
-  host: IHost
-) {
+export async function insert(table: string, row: IDbRow, db: SqliteDb) {
   const sqlite = await getDb(db.appName);
   const fieldNames = fields.map(f => f.field).join(", ");
   const values = fields.map(f => f.value);
@@ -27,20 +21,10 @@ export async function insert(
   return insert.run(values);
 }
 
-export async function update(
-  table: string,
-  row: IDbRow,
-  db: SqliteDb,
-  host: IHost
-) {
+export async function update(table: string, row: IDbRow, db: SqliteDb) {
   return;
 }
 
-export async function del(
-  table: string,
-  primaryKey: string,
-  db: SqliteDb,
-  host: IHost
-) {
+export async function del(table: string, primaryKey: string, db: SqliteDb) {
   return;
 }

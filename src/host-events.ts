@@ -1,10 +1,7 @@
-import { log } from "util";
-
-import * as crud from "./crud";
-import { getPermissionsFromString } from "./dbrow";
+import { getPermissionsFromString } from "./db-row";
 import exception from "./exception";
-
 import { getDb } from "./native-db";
+import * as sql from "./sql";
 import SqliteDb from "./sqlitedb";
 import { mergeMessagesIntoRow, MergeToDelete, MergeToUpdate } from "./ssb-log";
 import { Msg } from "./ssb-types";
@@ -59,9 +56,9 @@ export async function onWrite(
     ? mergeResult instanceof NonResult
       ? mergeResult
       : mergeResult instanceof MergeToDelete
-        ? crud.del(table, mergeResult.primaryKey, db, host)
+        ? sql.del(table, mergeResult.primaryKey, db)
         : mergeResult instanceof MergeToUpdate
-          ? crud.update(table, mergeResult.row, db, host)
-          : crud.update(table, mergeResult.row, db, host)
+          ? sql.update(table, mergeResult.row, db)
+          : sql.insert(table, mergeResult.row, db)
     : undefined;
 }

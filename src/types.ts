@@ -1,6 +1,11 @@
 import { Msg } from "./ssb-types";
 
-/* ScuttleKit */
+export interface IAppSettings {
+  name: string;
+  types: string[]
+}
+
+/* Db Schema */
 export interface IFieldSchema {
   type: string;
 }
@@ -26,6 +31,7 @@ export interface IDatabaseSchema {
   };
 }
 
+/* Querying */
 export interface IRowMeta {
   table: string;
   primaryKey: string;
@@ -70,11 +76,14 @@ export enum Operation {
   Del = "Del"
 }
 
+/* Permissions */
+
 export interface IPermission {
   feedId: string;
   fields?: string[];
 }
 
+/* Host */
 export interface IHost {
   write(record: ILogEntry<IRowMeta>, params?: IWriteParams): Promise<void>;
   onWrite(cb: (record: object) => void): void;

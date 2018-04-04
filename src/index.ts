@@ -1,4 +1,4 @@
-import { IHost, IDatabaseSchema } from "./types";
+import { IHost, IDatabaseSchema, IAppSettings } from "./types";
 import SqliteDb from "./sqlitedb";
 import { getDb } from "./native-db";
 import * as ddl from "./ddl";
@@ -10,20 +10,20 @@ import * as hostEvents from "./host-events";
     The settings are stored with the key "settings".
 */
 async function createDatabase(
-  appName: string,
-  settings: IDatabaseSchema,
+  appSettings: IAppSettings,
+  schema: IDatabaseSchema,
   host: IHost
 ) {
-  const sqlite = await getDb(appName);
+  const sqlite = await getDb(appSettings.name);
 
-  for (const tableName of Object.keys(settings.tables)) {
-    const table = settings.tables[tableName];
+  for (const tableName of Object.keys(schema.tables)) {
+    const table = schema.tables[tableName];
     await ddl.createTable(table, sqlite);
   }
 
-  await ddl.createSystemTable({ settings }, sqlite);
+  await ddl.createSystemTable({ schema }, sqlite);
 
-  const db = new SqliteDb(appName, settings);
+  const db = new SqliteDb(appSettings.name, settings);
 
   // Register to listen to writes on the host.
   host.onWrite((record: object) => hostEvents.onWrite(record, db, host));
@@ -34,15 +34,15 @@ async function createDatabase(
 /*
   Load an existing Database. Throw an error if the database wasn't initialized previously.
 */
-async function load(appName: string, host: IHost) {
-  const sqlite = await getDb(appName);
+async function load(appSettings: IAppSettings, host: IHost) {
+  const sqlite = await getDb(appSettings.name);
 
   const loadSettingsQuery = sqlite.prepare(
     "SELECT value FROM scuttlekit_settings WHERE key = 'settings'"
   );
 
   const result = loadSettingsQuery.run(loadSettingsQuery);
-  const db = new SqliteDb(appName, settings);
+  const db = new SqliteDb(appSettings.name, settings);
 
   // Register to listen to writes on the host.
   host.onWrite((record: object) => hostEvents.onWrite(record, db, host));
@@ -55,11 +55,11 @@ async function load(appName: string, host: IHost) {
   If the database already exists when init() is called, an error is thrown.
 */
 export async function register(
-  appName: string,
-  settings: IDatabaseSchema,
+  appSettings: IAppSettings,
+  schema: IDatabaseSchema,
   host: IHost
 ): Promise<SqliteDb> {
-  return await createDatabase(appName, settings, host);
+  return await createDatabase(appSettings, schema, host);
 }
 
 /*
@@ -67,6 +67,9 @@ export async function register(
   This may be called by the client app multiple times; so we initialize the database connection and cache it.
   There may also be multiple client apps speaking to us; so the db connection cache will hold multiple databases.
 */
-export async function init(appName: string, host: IHost): Promise<SqliteDb> {
-  return await load(appName, host);
+export async function init(
+  appSettings: IAppSettings,
+  host: IHost
+): Promise<SqliteDb> {
+  return await load(appSettings, host);
 }
