@@ -1,4 +1,9 @@
-import { constructRowFromMessage } from "./db-row";
+import {
+  basicFieldsFromMessage,
+  constructRowFromMessage,
+  mergeFieldsIntoRow
+} from "./db-row";
+import { NonResult } from "./host-events";
 import * as sql from "./sql";
 import SqliteDb from "./sqlitedb";
 import { Msg } from "./ssb-types";
@@ -12,104 +17,6 @@ import {
   ITableSchema,
   Operation
 } from "./types";
-import { NonResult } from "./host-events";
-
-export async function mergeMessagesIntoRow(
-  message: Msg<ILogEntry<IRowMeta>>,
-  table: string,
-  primaryKey: string,
-  db: SqliteDb,
-  host: IHost
-): Promise<MergeResult | undefined> {
-  const unorderedMessages = await host.getMessagesByPrimaryKey(
-    table,
-    primaryKey
-  );
-  const messages = sortMessages(unorderedMessages);
-
-  const rowsForKey = await sql.getByPrimaryKey(table, primaryKey, db);
-  const existingRow = rowsForKey.length > 0 ? rowsForKey.rows[0] : undefined;
-
-  const logEntry = message.value.content;
-
-  function loop(
-    row: IDbRow | MergeToDelete | undefined,
-    msgs: Msg<ILogEntry<IRowMeta>>[]
-  ): MergeResult | undefined {
-    if (row instanceof MergeToDelete) {
-      return row;
-    } else {
-      const [current, ...rest] = msgs;
-      return rest.length
-        ? logEntry.__meta.operation === Operation.Insert
-          ? // If row exists or has an invalid key, skip.
-            !row ? loop(insert(current, row) || row, rest) : loop(row, rest)
-          : logEntry.__meta.operation === Operation.Update
-            ? row
-              ? loop(update(current, row) || row, rest)
-              : // If row does not exist, skip.
-                loop(row, rest)
-            : logEntry.__meta.operation === Operation.Del
-              ? row ? del(current, row) || loop(row, rest) : loop(row, rest)
-              : loop(row, rest)
-        : row
-          ? existingRow ? new MergeToUpdate(row) : new MergeToInsert(row)
-          : undefined;
-    }
-  }
-
-  return loop(existingRow, messages);
-}
-
-/*
-  Returns undefined if the row already exists.
-*/
-function insert(
-  msg: Msg<ILogEntry<IRowMeta>>,
-  row?: IDbRow
-): IDbRow | undefined {
-  if (!row) {
-    const logEntry = msg.value.content;
-    const [rowId, feedId] = logEntry.__meta.primaryKey.split("_");
-    return feedId === msg.value.author
-      ? constructRowFromMessage(
-          logEntry as ILogEntry<IEditMeta>,
-          msg.value.timestamp
-        )
-      : undefined;
-  } else {
-    return undefined;
-  }
-}
-
-/*
-  Returns undefined if row doesn't exist.
-*/
-function update(
-  msg: Msg<ILogEntry<IRowMeta>>,
-  row: IDbRow
-): IDbRow | undefined {
-  const permissions = getPermissionsFromString(row.__permissions);
-  if (row) {
-    return row;
-  } else {
-    return undefined;
-  }
-}
-
-/*
-  Returns undefined if row doesn't exist.
-*/
-function del(
-  msg: Msg<ILogEntry<IRowMeta>>,
-  row: IDbRow
-): MergeToDelete | undefined {
-  if (row) {
-    return new MergeToDelete(primaryKey);
-  } else {
-    return undefined;
-  }
-}
 
 export class MergeToDelete {
   primaryKey: string;
@@ -134,7 +41,134 @@ export class MergeToUpdate {
   }
 }
 
+export type MergeFailReasons = "NO_PERMISSION" | "ROW_EXISTS" | "MISSING_ROW";
+
+export class MergeFail {
+  type: MergeFailReasons;
+
+  constructor(type: MergeFailReasons) {
+    this.type = type;
+  }
+}
+
 export type MergeResult = MergeToDelete | MergeToUpdate | MergeToInsert;
+
+export async function mergeMessagesIntoRow(
+  message: Msg<ILogEntry<IRowMeta>>,
+  table: string,
+  primaryKey: string,
+  db: SqliteDb,
+  host: IHost
+): Promise<MergeResult | undefined> {
+  const unorderedMessages = await host.getMessagesByPrimaryKey(
+    table,
+    primaryKey
+  );
+  const messages = sortMessages(unorderedMessages);
+
+  const rowsForKey = await sql.getByPrimaryKey(table, primaryKey, db);
+  const existingRow = rowsForKey.length > 0 ? rowsForKey.rows[0] : undefined;
+
+  const logEntry = message.value.content;
+
+  function validMergeOrPrevious(
+    mergeResult: IDbRow | MergeFail,
+    previous?: IDbRow
+  ) {
+    return !(mergeResult instanceof MergeFail) ? mergeResult : previous;
+  }
+
+  function loop(
+    row: IDbRow | undefined,
+    msgs: Msg<ILogEntry<IRowMeta>>[]
+  ): any | MergeResult | MergeFail {
+    if (row instanceof MergeToDelete) {
+      return row;
+    } else {
+      const [current, ...rest] = msgs;
+      return rest.length
+        ? logEntry.__meta.operation === Operation.Insert
+          ? loop(
+              !row
+                ? validMergeOrPrevious(
+                    insert(row, current as Msg<ILogEntry<IEditMeta>>),
+                    row
+                  )
+                : row,
+              rest
+            )
+          : logEntry.__meta.operation === Operation.Update
+            ? loop(
+                row
+                  ? validMergeOrPrevious(
+                      update(row, current as Msg<ILogEntry<IEditMeta>>),
+                      row
+                    )
+                  : row,
+                rest
+              )
+            : logEntry.__meta.operation === Operation.Del
+              ? row
+                ? (() => {
+                    const delResult = del(row, current);
+                    return delResult instanceof MergeToDelete
+                      ? delResult
+                      : loop(row, rest);
+                  })()
+                : loop(row, rest)
+              : loop(row, rest)
+        : row
+          ? existingRow ? new MergeToUpdate(row) : new MergeToInsert(row)
+          : undefined;
+    }
+  }
+
+  return loop(existingRow, messages);
+}
+
+function insert(
+  row: IDbRow | undefined,
+  msg: Msg<ILogEntry<IEditMeta>>
+): IDbRow | MergeFail {
+  if (!row) {
+    const logEntry = msg.value.content;
+    const [rowId, feedId] = logEntry.__meta.primaryKey.split("_");
+    return feedId === msg.value.author
+      ? constructRowFromMessage(logEntry, msg.value.timestamp)
+      : new MergeFail("NO_PERMISSION");
+  } else {
+    return new MergeFail("ROW_EXISTS");
+  }
+}
+
+function update(
+  row: IDbRow,
+  msg: Msg<ILogEntry<IEditMeta>>
+): IDbRow | MergeFail {
+  const logEntry = msg.value.content;
+  const permissions = getPermissionsFromString(row.__permissions);
+  const userPermission = permissions.find(p => p.feedId === msg.value.author);
+  const fields = basicFieldsFromMessage(logEntry);
+  const hasPermission =
+    userPermission &&
+    Object.keys(fields).every(f => userPermission.fields.includes(f));
+  return hasPermission
+    ? mergeFieldsIntoRow(row, fields)
+    : new MergeFail("NO_PERMISSION");
+}
+
+function del(
+  row: IDbRow,
+  msg: Msg<ILogEntry<IRowMeta>>
+): MergeToDelete | MergeFail {
+  const logEntry = msg.value.content;
+  const permissions = getPermissionsFromString(row.__permissions);
+  const userPermission = permissions.find(p => p.feedId === msg.value.author);
+  const hasPermission = userPermission && userPermission.fields.includes("*");
+  return hasPermission
+    ? new MergeToDelete(logEntry.__meta.primaryKey)
+    : new MergeFail("NO_PERMISSION");
+}
 
 function sortMessages(entries: Msg<ILogEntry<IRowMeta>>[]) {
   return entries;

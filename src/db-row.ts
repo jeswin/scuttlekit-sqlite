@@ -3,6 +3,7 @@ import {
   IDbRow,
   IDeleteMeta,
   IEditMeta,
+  IFields,
   IHost,
   ILogEntry,
   IRowMeta,
@@ -27,51 +28,33 @@ export function getFieldValue(row: IDbRow, fieldName: string) {
   return field ? field.value : undefined;
 }
 
-export function constructRowFromMessage(
-  logEntry: ILogEntry<IEditMeta>,
-  timestamp: number
-): IDbRow {
+export function basicFieldsFromMessage(
+  logEntry: ILogEntry<IEditMeta>
+): IFields {
   const result: any = {};
   for (const key of Object.keys(logEntry)) {
     if (key !== "__meta" && key !== "type") {
       result[key] = logEntry[key];
     }
   }
-  result.__deleted = false;
-  result.__permissions = getPermissionsField(logEntry);
-  result.__timestamp = timestamp;
   return result;
 }
 
-export function updateRowFromMessage(
-  row: IDbRow,
+export function constructRowFromMessage(
   logEntry: ILogEntry<IEditMeta>,
-  timestamp: number,
-  isCurrentUser: boolean
-) {
-  const permissions = getPermissionsFromString(row.__permissions);
-  const userPermissions = permissions.find(p => p.feedId === msg.value.author);
+  timestamp: number
+): IDbRow {
+  return {
+    ...basicFieldsFromMessage(logEntry),
+    __deleted: false,
+    __permissions: getPermissionsField(logEntry),
+    __timestamp: timestamp
+  };
+}
 
-  for (const key of Object.keys(logEntry)) {
-    if (key !== "__meta" && key !== "type") {
-      // Check if we have permissions to update
-      if (
-        isCurrentUser ||
-        (userPermissions &&
-          ["*", key].some(f => userPermissions.fields.includes(f)))
-      ) {
-        row[key] = logEntry[key];
-      }
-    }
+export function mergeFieldsIntoRow(row: IDbRow, fields: IFields) {
+  for (const key of Object.keys(fields)) {
+    row[key] = fields[key];
   }
-
-  // Updating permissions; you gotta be the owner.
-  if (logEntry.__meta.permissions.length) {
-    if (
-      isCurrentUser ||
-      (userPermissions && userPermissions.fields.includes("*"))
-    ) {
-      row.__permissions = getPermissionsField();
-    }
-  }
+  return row;
 }

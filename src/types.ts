@@ -2,7 +2,7 @@ import { Msg } from "./ssb-types";
 
 export interface IAppSettings {
   name: string;
-  types: string[]
+  types: string[];
 }
 
 /* Db Schema */
@@ -58,11 +58,14 @@ export interface IWriteParams {
   operation: Operation;
 }
 
-export interface IDbRow {
+export interface IFields {
+  [name: string]: string | number | boolean;
+}
+
+export interface IDbRow extends IFields {
   __deleted: boolean;
   __permissions: string;
   __timestamp: number;
-  [name: string]: string | number | boolean;
 }
 
 export interface IQueryResult {
