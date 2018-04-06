@@ -1,8 +1,3 @@
-import {
-  basicFieldsFromMessage,
-  constructRowFromMessage,
-  mergeFieldsIntoRow
-} from "./db-row";
 import { NonResult } from "./host-events";
 import * as sql from "./sql";
 import SqliteDb from "./sqlitedb";
@@ -11,6 +6,7 @@ import {
   IDbRow,
   IDeleteMeta,
   IEditMeta,
+  IFields,
   IHost,
   ILogEntry,
   IRowMeta,
@@ -81,7 +77,7 @@ export async function mergeMessagesIntoRow(
   function loop(
     row: IDbRow | undefined,
     msgs: Msg<ILogEntry<IRowMeta>>[]
-  ): any | MergeResult | MergeFail {
+  ): MergeResult | undefined {
     if (row instanceof MergeToDelete) {
       return row;
     } else {
@@ -133,9 +129,17 @@ function insert(
   if (!row) {
     const logEntry = msg.value.content;
     const [rowId, feedId] = logEntry.__meta.primaryKey.split("_");
-    return feedId === msg.value.author
-      ? constructRowFromMessage(logEntry, msg.value.timestamp)
-      : new MergeFail("NO_PERMISSION");
+    if (feedId === msg.value.author) {
+      const fields = basicFieldsFromMessage(logEntry);
+      return {
+        ...fields,
+        __deleted: false,
+        __permissions: `${msg.value.author}:"*"`,
+        __timestamp: 0
+      };
+    } else {
+      return new MergeFail("NO_PERMISSION");
+    }
   } else {
     return new MergeFail("ROW_EXISTS");
   }
@@ -151,7 +155,8 @@ function update(
   const fields = basicFieldsFromMessage(logEntry);
   const hasPermission =
     userPermission &&
-    Object.keys(fields).every(f => userPermission.fields.includes(f));
+    (userPermission.fields.includes("*") ||
+      Object.keys(fields).every(f => userPermission.fields.includes(f)));
   return hasPermission
     ? mergeFieldsIntoRow(row, fields)
     : new MergeFail("NO_PERMISSION");
@@ -174,7 +179,9 @@ function sortMessages(entries: Msg<ILogEntry<IRowMeta>>[]) {
   return entries;
 }
 
-function parsePrimaryKey<T>(msg: Msg<ILogEntry<IEditMeta>>): [string, string] {
+export function parsePrimaryKey<T>(
+  msg: Msg<ILogEntry<IEditMeta>>
+): [string, string] {
   const [rowId, feedId] = msg.value.content.primaryKey.split("_");
   return [rowId, feedId];
 }
@@ -189,6 +196,25 @@ export function getPermissionsFromString(strPerms?: string) {
         };
       })
     : [];
+}
+
+export function basicFieldsFromMessage(
+  logEntry: ILogEntry<IEditMeta>
+): IFields {
+  const result: any = {};
+  for (const key of Object.keys(logEntry)) {
+    if (key !== "__meta" && key !== "type") {
+      result[key] = logEntry[key];
+    }
+  }
+  return result;
+}
+
+export function mergeFieldsIntoRow(row: IDbRow, fields: IFields) {
+  for (const key of Object.keys(fields)) {
+    row[key] = fields[key];
+  }
+  return row;
 }
 
 export function getPermissionsField(logEntry: ILogEntry<IEditMeta>) {
