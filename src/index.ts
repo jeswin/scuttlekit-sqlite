@@ -1,8 +1,8 @@
-import { IHost, IDatabaseSchema, IAppSettings } from "./types";
-import SqliteDb from "./sqlitedb";
-import { getDb } from "./native-db";
 import * as ddl from "./ddl";
 import * as hostEvents from "./host-events";
+import { getDb } from "./native-db";
+import SqliteDb from "./sqlitedb";
+import { IAppSettings, IDatabaseSchema, IHost } from "./types";
 
 /*
     Create all the tables in db settings. And finally write the settings into the system table.

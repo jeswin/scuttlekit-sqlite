@@ -15,9 +15,9 @@ import {
 } from "./types";
 
 export class MergeToDelete {
-  primaryKey: string;
+  pKey: string;
   constructor(key: string) {
-    this.primaryKey = key;
+    this.pKey = key;
   }
 }
 
@@ -52,17 +52,17 @@ export type MergeResult = MergeToDelete | MergeToUpdate | MergeToInsert;
 export async function mergeMessagesIntoRow(
   message: Msg<ILogEntry<IRowMeta>>,
   table: string,
-  primaryKey: string,
+  pKey: string,
   db: SqliteDb,
   host: IHost
 ): Promise<MergeResult | undefined> {
-  const unorderedMessages = await host.getMessagesByPrimaryKey(
+  const unorderedMessages = await host.getMessagesBypKey(
     table,
-    primaryKey
+    pKey
   );
   const messages = sortMessages(unorderedMessages);
 
-  const rowsForKey = await sql.getByPrimaryKey(table, primaryKey, db);
+  const rowsForKey = await sql.getBypKey(table, pKey, db);
   const existingRow = rowsForKey.length > 0 ? rowsForKey.rows[0] : undefined;
 
   const logEntry = message.value.content;
@@ -128,7 +128,7 @@ function insert(
 ): IDbRow | MergeFail {
   if (!row) {
     const logEntry = msg.value.content;
-    const [rowId, feedId] = logEntry.__meta.primaryKey.split("_");
+    const [rowId, feedId] = logEntry.__meta.pKey.split("_");
     if (feedId === msg.value.author) {
       const fields = basicFieldsFromMessage(logEntry);
       return {
@@ -171,7 +171,7 @@ function del(
   const userPermission = permissions.find(p => p.feedId === msg.value.author);
   const hasPermission = userPermission && userPermission.fields.includes("*");
   return hasPermission
-    ? new MergeToDelete(logEntry.__meta.primaryKey)
+    ? new MergeToDelete(logEntry.__meta.pKey)
     : new MergeFail("NO_PERMISSION");
 }
 
@@ -179,10 +179,10 @@ function sortMessages(entries: Msg<ILogEntry<IRowMeta>>[]) {
   return entries;
 }
 
-export function parsePrimaryKey<T>(
+export function parsepKey<T>(
   msg: Msg<ILogEntry<IEditMeta>>
 ): [string, string] {
-  const [rowId, feedId] = msg.value.content.primaryKey.split("_");
+  const [rowId, feedId] = msg.value.content.pKey.split("_");
   return [rowId, feedId];
 }
 
@@ -230,7 +230,7 @@ export function getPermissionsField(logEntry: ILogEntry<IEditMeta>) {
 
 export function getFieldsFromLogEntry(logEntry: ILogEntry<any>) {
   return Object.keys(logEntry).filter(k =>
-    ["primaryKey", "type", "__meta"].includes(k)
+    ["pKey", "type", "__meta"].includes(k)
   );
 }
 

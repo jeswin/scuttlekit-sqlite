@@ -12,7 +12,6 @@ export interface IFieldSchema {
 
 export interface IForeignKey {
   foreignKey: string;
-  primaryKey: string;
   table: string;
 }
 
@@ -21,8 +20,11 @@ export interface ITableSchema {
     [key: string]: IFieldSchema;
   };
   encrypted: boolean;
-  primaryKey: string;
   foreignKeys: IForeignKey[];
+  indexes: {
+    field: string;
+    ascending: boolean;
+  }[];
 }
 
 export interface IDatabaseSchema {
@@ -32,11 +34,14 @@ export interface IDatabaseSchema {
 }
 
 /* Querying */
-export interface IRowMeta {
-  table: string;
-  primaryKey: string;
-  transactionId: string;
+export interface ILogEntryMeta {
   operation: Operation;
+}
+
+export interface IRowMeta extends ILogEntryMeta {
+  table: string;
+  pKey: string;
+  transactionId: string;
 }
 
 export interface IEditMeta extends IRowMeta {
@@ -48,7 +53,12 @@ export interface IDeleteMeta extends IRowMeta {
   operation: Operation.Del;
 }
 
-export interface ILogEntry<TMeta extends IRowMeta> {
+export interface ICommitTransactionMeta extends ILogEntryMeta {
+  operation: Operation.CommitTransaction;
+  transactionId: string;
+}
+
+export interface ILogEntry<TMeta extends ILogEntryMeta> {
   type: string;
   __meta: TMeta;
   [key: string]: any;
@@ -76,7 +86,8 @@ export interface IQueryResult {
 export enum Operation {
   Insert = "Insert",
   Update = "Update",
-  Del = "Del"
+  Del = "Del",
+  CommitTransaction = "CommitTransaction"
 }
 
 /* Permissions */
@@ -88,10 +99,8 @@ export interface IPermission {
 
 /* Host */
 export interface IHost {
-  write(record: ILogEntry<IRowMeta>, params?: IWriteParams): Promise<void>;
+  getFeedId(): string;
+  getMessagesBypKey(table: string, pKey: string): Msg<ILogEntry<IRowMeta>>[];
+  write(record: ILogEntry<ILogEntryMeta>, params?: IWriteParams): Promise<void>;
   onWrite(cb: (record: object) => void): void;
-  getMessagesByPrimaryKey(
-    table: string,
-    primaryKey: string
-  ): Msg<ILogEntry<IRowMeta>>[];
 }

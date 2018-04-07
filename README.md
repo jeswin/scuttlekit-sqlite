@@ -46,15 +46,15 @@ const schema = {
         timestamp: { type: "number", required: false }
       },
       encrypted: { type: "boolean" },
-      primaryKey: "id",
-      foreignKeys: [{ field: "listId", table: "lists", primaryKey: "id" }]
+      pKey: "id",
+      foreignKeys: [{ field: "listId", table: "lists", pKey: "id" }]
     },
     list: {
       fields: {
         id: { type: "string" },
         name: { type: "string" }
       },
-      primaryKey: "id"
+      pKey: "id"
     }
   }
 };

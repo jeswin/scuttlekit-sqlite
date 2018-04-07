@@ -1,13 +1,13 @@
 import Database = require("better-sqlite3");
-import { ITableSchema, IDatabaseSchema } from "./types";
+import { IDatabaseSchema, ITableSchema } from "./types";
 
 export async function createTable(table: ITableSchema, underlying: Database) {}
 
-export type SystemTableOptions = {
+export interface ISystemTableOptions {
   schema: IDatabaseSchema;
-};
+}
 
 export async function createSystemTable(
-  { schema }: SystemTableOptions,
+  { schema }: ISystemTableOptions,
   underlying: Database
 ) {}

@@ -1,12 +1,8 @@
 import { getDb } from "./native-db";
-import SqliteDb from "./sqlitedb";
-import { IHost, IQueryResult, IDbRow } from "./types";
+import SqliteDb from "./SqliteDb";
+import { IDbRow, IHost, IQueryResult } from "./types";
 
-export async function getByPrimaryKey(
-  table: string,
-  primaryKey: string,
-  db: SqliteDb
-) {
+export async function getBypKey(table: string, pKey: string, db: SqliteDb) {
   return { length: 100, rows: [{ __timestamp: 0 }] } as IQueryResult;
 }
 
@@ -25,6 +21,6 @@ export async function update(table: string, row: IDbRow, db: SqliteDb) {
   return;
 }
 
-export async function del(table: string, primaryKey: string, db: SqliteDb) {
+export async function del(table: string, pKey: string, db: SqliteDb) {
   return;
 }

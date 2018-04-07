@@ -1,4 +1,3 @@
-import { getPermissionsFromString } from "./db-row";
 import exception from "./exception";
 import { getDb } from "./native-db";
 import * as sql from "./sql";
@@ -46,7 +45,7 @@ export async function onWrite(
       : await mergeMessagesIntoRow(
           msg,
           logEntry.__meta.table,
-          logEntry.__meta.primaryKey,
+          logEntry.__meta.pKey,
           db,
           host
         )
@@ -56,7 +55,7 @@ export async function onWrite(
     ? mergeResult instanceof NonResult
       ? mergeResult
       : mergeResult instanceof MergeToDelete
-        ? sql.del(table, mergeResult.primaryKey, db)
+        ? sql.del(table, mergeResult.pKey, db)
         : mergeResult instanceof MergeToUpdate
           ? sql.update(table, mergeResult.row, db)
           : sql.insert(table, mergeResult.row, db)

@@ -9,7 +9,8 @@
     "member-access": false,
     "array-type": false,
     "no-trailing-whitespace": false,
-    "max-classes-per-file": false
+    "max-classes-per-file": false,
+    "no-bitwise": false
   },
   "rulesDirectory": []
 }
