@@ -1,7 +1,9 @@
 import Database = require("better-sqlite3");
-import exception from "./exception";
-import SqliteDb from "./SqliteDb";
+import exception from "../exception";
+import * as sql from "../sqlite/sql";
+import SqliteDb from "../sqlite/SqliteDb";
 import {
+  ICommitTransactionMeta,
   IDatabaseSchema,
   IDeleteMeta,
   IEditMeta,
@@ -9,9 +11,8 @@ import {
   ILogEntry,
   IPermission,
   IRowMeta,
-  Operation,
-  ICommitTransactionMeta
-} from "./types";
+  Operation
+} from "./types/types";
 import { uuidv4 } from "./utils/random";
 
 function getTableName(appName: string, table: string) {
@@ -118,8 +119,8 @@ async function del(
 
 /*
   ScuttleKit transactions are a little different from a regular database transaction.
-  It simply means that the writes cannot be read until a completeTransaction() call is written to the log.
-  If completeTransaction() was never called, or if discardTransaction() is called, those writes will never be seen.
+  It simply means that the writes are not considered until a completeTransaction() call is written to the log.
+  If completeTransaction() was never called, those writes will never be seen.
 */
 function createTransaction() {
   return uuidv4();
@@ -139,4 +140,6 @@ async function completeTransaction(
   });
 }
 
-async function query(query: string, db: SqliteDb, host: IHost) {}
+async function query(sqlQuery: string, db: SqliteDb, host: IHost) {
+  return await sql.query(sqlQuery, db);
+}

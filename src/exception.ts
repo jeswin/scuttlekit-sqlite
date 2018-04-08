@@ -1,3 +1,3 @@
-export default function(message: string) : never {
+export default function(message: string): never {
   throw new Error(message);
 }

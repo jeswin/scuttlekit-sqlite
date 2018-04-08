@@ -24,3 +24,7 @@ export async function update(table: string, row: IDbRow, db: SqliteDb) {
 export async function del(table: string, pKey: string, db: SqliteDb) {
   return;
 }
+
+export async function query(sqlQuery: string, db: SqliteDb) {
+  return;
+}

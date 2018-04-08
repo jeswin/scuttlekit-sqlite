@@ -1,7 +1,7 @@
 import exception from "./exception";
 import { getDb } from "./native-db";
 import * as sql from "./sql";
-import SqliteDb from "./sqlitedb";
+import SqliteDb from "./SqliteDb";
 import { mergeMessagesIntoRow, MergeToDelete, MergeToUpdate } from "./ssb-log";
 import { Msg } from "./ssb-types";
 import {
