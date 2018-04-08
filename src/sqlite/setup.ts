@@ -1,5 +1,5 @@
 import Database = require("better-sqlite3");
-import { IDatabaseSchema, ITableSchema } from "./types";
+import { IDatabaseSchema, ITableSchema } from "../types/basic";
 
 export async function createTable(table: ITableSchema, underlying: Database) {}
 

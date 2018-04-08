@@ -1,6 +1,6 @@
+import { IDbRow, IHost, IQueryResult } from "../types/basic";
 import { getDb } from "./native-db";
 import SqliteDb from "./SqliteDb";
-import { IDbRow, IHost, IQueryResult } from "./types";
 
 export async function getBypKey(table: string, pKey: string, db: SqliteDb) {
   return { length: 100, rows: [{ __timestamp: 0 }] } as IQueryResult;

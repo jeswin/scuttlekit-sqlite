@@ -4,6 +4,30 @@ import SqliteDb from "./sqlite/SqliteDb";
 import { IAppSettings, IDatabaseSchema, IHost } from "./types/basic";
 
 /*
+  Called when a new app registers with ScuttleKit. 
+  This creates the database. If the database already exists, it is overwritten.
+*/
+export async function register(
+  appSettings: IAppSettings,
+  schema: IDatabaseSchema,
+  host: IHost
+): Promise<SqliteDb> {
+  return await createDatabase(appSettings, schema, host);
+}
+
+/*
+  Called by ssb-scuttlekit when getService("sqlite") is called.
+  This may be called by the client app multiple times; so we initialize the database connection and cache it.
+  There may also be multiple client apps speaking to us; so the db connection cache will hold multiple databases.
+*/
+export async function init(
+  appSettings: IAppSettings,
+  host: IHost
+): Promise<SqliteDb> {
+  return await load(appSettings, host);
+}
+
+/*
     Create all the tables in db settings. And finally write the settings into the system table.
     The system table is a special table named "scuttlekit_system" which holds key-value pairs.
     The settings are stored with the key "settings".
@@ -24,7 +48,7 @@ async function createDatabase(
 
   const db = new SqliteDb(appSettings.name, settings);
 
-  // Register to listen to writes on the host.
+  // Listen to writes on the host.
   host.onWrite((record: object) => hostEvents.onWrite(record, db, host));
 
   return db;
@@ -47,28 +71,4 @@ async function load(appSettings: IAppSettings, host: IHost) {
   host.onWrite((record: object) => hostEvents.onWrite(record, db, host));
 
   return db;
-}
-
-/*
-  Called when Scuttlekit is initialized. This creates the database.
-  If the database already exists when init() is called, an error is thrown.
-*/
-export async function register(
-  appSettings: IAppSettings,
-  schema: IDatabaseSchema,
-  host: IHost
-): Promise<SqliteDb> {
-  return await createDatabase(appSettings, schema, host);
-}
-
-/*
-  Called by ssb-scuttlekit when getService("sqlite") is called.
-  This may be called by the client app multiple times; so we initialize the database connection and cache it.
-  There may also be multiple client apps speaking to us; so the db connection cache will hold multiple databases.
-*/
-export async function init(
-  appSettings: IAppSettings,
-  host: IHost
-): Promise<SqliteDb> {
-  return await load(appSettings, host);
 }

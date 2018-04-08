@@ -1,7 +1,6 @@
-import { NonResult } from "./host-events";
-import * as sql from "./sql";
-import SqliteDb from "./sqlitedb";
-import { Msg } from "./ssb-types";
+import { NonResult } from "../host/events";
+import * as sql from "../sqlite/sql";
+import SqliteDb from "../sqlite/SqliteDb";
 import {
   IDbRow,
   IDeleteMeta,
@@ -12,7 +11,8 @@ import {
   IRowMeta,
   ITableSchema,
   Operation
-} from "./types";
+} from "../types/basic";
+import { Msg } from "../types/ssb-types";
 
 export class MergeToDelete {
   pKey: string;
@@ -56,10 +56,7 @@ export async function mergeMessagesIntoRow(
   db: SqliteDb,
   host: IHost
 ): Promise<MergeResult | undefined> {
-  const unorderedMessages = await host.getMessagesBypKey(
-    table,
-    pKey
-  );
+  const unorderedMessages = await host.getMessagesBypKey(table, pKey);
   const messages = sortMessages(unorderedMessages);
 
   const rowsForKey = await sql.getBypKey(table, pKey, db);
@@ -179,9 +176,7 @@ function sortMessages(entries: Msg<ILogEntry<IRowMeta>>[]) {
   return entries;
 }
 
-export function parsepKey<T>(
-  msg: Msg<ILogEntry<IEditMeta>>
-): [string, string] {
+export function parsepKey<T>(msg: Msg<ILogEntry<IEditMeta>>): [string, string] {
   const [rowId, feedId] = msg.value.content.pKey.split("_");
   return [rowId, feedId];
 }

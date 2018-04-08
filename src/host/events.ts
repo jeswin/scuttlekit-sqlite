@@ -1,9 +1,8 @@
-import exception from "./exception";
-import { getDb } from "./native-db";
-import * as sql from "./sql";
-import SqliteDb from "./SqliteDb";
-import { mergeMessagesIntoRow, MergeToDelete, MergeToUpdate } from "./ssb-log";
-import { Msg } from "./ssb-types";
+import exception from "../exception";
+import { mergeMessagesIntoRow, MergeToDelete, MergeToUpdate } from "../host/ssb-log";
+import { getDb } from "../sqlite/native-db";
+import * as sql from "../sqlite/sql";
+import SqliteDb from "../sqlite/SqliteDb";
 import {
   IDbRow,
   IDeleteMeta,
@@ -13,7 +12,8 @@ import {
   IRowMeta,
   ITableSchema,
   Operation
-} from "./types";
+} from "../types/basic";
+import { Msg } from "../types/ssb-types";
 
 export type NonResultType =
   | "AWAIT_TRANSACTION_COMMIT"

@@ -1,6 +1,6 @@
 import Database = require("better-sqlite3");
+import { IDatabaseSchema, IHost, ILogEntry } from "../types/basic";
 import { getDb } from "./native-db";
-import { IDatabaseSchema, IHost, ILogEntry } from "./types";
 
 /*
   The SqliteDb interface, which clients use to access DB functionality.  

@@ -12,8 +12,8 @@ import {
   IPermission,
   IRowMeta,
   Operation
-} from "./types/types";
-import { uuidv4 } from "./utils/random";
+} from "../types/basic";
+import { uuidv4 } from "../utils/random";
 
 function getTableName(appName: string, table: string) {
   return `${appName}-${table}`;
