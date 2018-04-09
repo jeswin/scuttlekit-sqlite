@@ -18,18 +18,21 @@ export interface ISystemSettings {
   This gets called prior to register, to notify the user whether the database already exists.
 */
 export async function getSystemSettings(
-  appSettings: IAppSettings
-): ISystemSettings {
-  if (fs.existsSync(path.join(rootDir, appSettings.name))) {
-    const sqlite = await getDb(appSettings.name);
+  appName: string,
+  host: IHost
+): Promise<ISystemSettings | void> {
+  if (fs.existsSync(path.join(host.getDataDirectory(), appName))) {
+    const sqlite = await getDb(appName);
     const statement = sqlite.prepare(
       "SELECT key, value FROM scuttlekit_settings"
     );
-    const rows = statement.run();
-    const settings = rows.reduce((acc, { key, value }) => {
-      return (acc[key] = value), acc;
-    }, {});
-    return settings;
+    const rows: { key: string; value: string }[] = statement.all();
+    return rows.reduce(
+      (acc, { key, value }) => {
+        return (acc[key] = value), acc;
+      },
+      {} as ISystemSettings
+    );
   } else {
     return undefined;
   }
@@ -46,6 +49,7 @@ export async function register(
 ): Promise<SqliteDb> {
   const db = await createDatabase(appSettings, schema, host);
   host.onWrite((record: object) => hostEvents.onWrite(record, db, host));
+  return db;
 }
 
 /*

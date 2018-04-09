@@ -59,7 +59,7 @@ export async function mergeMessagesIntoRow(
   const unorderedMessages = await host.getMessagesBypKey(table, pKey);
   const messages = sortMessages(unorderedMessages);
 
-  const rowsForKey = await sql.getBypKey(table, pKey, db);
+  const rowsForKey = await sql.getByPKey(table, pKey, db);
   const existingRow = rowsForKey.length > 0 ? rowsForKey.rows[0] : undefined;
 
   const logEntry = message.value.content;

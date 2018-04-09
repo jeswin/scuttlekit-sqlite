@@ -103,6 +103,7 @@ export interface IPermission {
 
 /* Host */
 export interface IHost {
+  getDataDirectory(): string;
   getFeedId(): string;
   getMessagesBypKey(table: string, pKey: string): Msg<ILogEntry<IRowMeta>>[];
   write(record: ILogEntry<ILogEntryMeta>, params?: IWriteParams): Promise<void>;

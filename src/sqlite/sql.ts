@@ -13,7 +13,8 @@ export async function insert(table: string, row: IDbRow, db: SqliteDb) {
   const insert = db.sqlite.prepare(
     `INSERT INTO ${fieldNames} VALUES (${questionMarks})`
   );
-  return insert.run(values);
+  insert.run(values);
+  return;
 }
 
 export async function update(table: string, row: IDbRow, db: SqliteDb) {

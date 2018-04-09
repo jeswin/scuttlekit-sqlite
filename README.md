@@ -60,19 +60,13 @@ const schema = {
 
 async function onLoad() {
   const sdk = new ScuttleKit();
-  if (!sdk.isRegistered()) {
-    const callbackUrl = "/onregister";
-    const options = {
-      app,
-      version,
-      sdkCompatibility,
-      schema,
-      db: "sqlite"
-    };
-    sdk.register(options, callbackUrl); //Returns a promise
-  } else {
-    sdk.init(); //Returns a promise
-  }
+  sdk.init({
+    app,
+    version,
+    schema,
+    registrationUrl: "/register",
+    db: "sqlite"
+  });
 }
 ```
 
