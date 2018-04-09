@@ -25,7 +25,11 @@ export async function getSystemSettings(
     const statement = sqlite.prepare(
       "SELECT key, value FROM scuttlekit_settings"
     );
-    statement.run();
+    const rows = statement.run();
+    const settings = rows.reduce((acc, { key, value }) => {
+      return (acc[key] = value), acc;
+    }, {});
+    return settings;
   } else {
     return undefined;
   }

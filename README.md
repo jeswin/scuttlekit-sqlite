@@ -1,7 +1,6 @@
 NOTE: This is work in progress. Planning for an alpha by the end of April.
 See https://www.github.com/jeswin/ssb-scuttlekit
 
-
 ## Creating a client
 
 Include the scuttlekit-client library on a web page for easy access to the ScuttleKit SDK.
@@ -67,7 +66,8 @@ async function onLoad() {
       app,
       version,
       sdkCompatibility,
-      services: { sqlite: schema }
+      schema,
+      db: "sqlite"
     };
     sdk.register(options, callbackUrl); //Returns a promise
   } else {

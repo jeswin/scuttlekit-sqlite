@@ -2,7 +2,7 @@ import { IDbRow, IHost, IQueryResult } from "../types/basic";
 import { getDb } from "./db-cache";
 import SqliteDb from "./SqliteDb";
 
-export async function getBypKey(table: string, pKey: string, db: SqliteDb) {
+export async function getByPKey(table: string, pKey: string, db: SqliteDb) {
   return { length: 100, rows: [{ __timestamp: 0 }] } as IQueryResult;
 }
 
