@@ -1,6 +1,6 @@
 import exception from "../exception";
 import { mergeMessagesIntoRow, MergeToDelete, MergeToUpdate } from "../host/ssb-log";
-import { getDb } from "../sqlite/native-db";
+import { getDb } from "../sqlite/db-cache";
 import * as sql from "../sqlite/sql";
 import SqliteDb from "../sqlite/SqliteDb";
 import {

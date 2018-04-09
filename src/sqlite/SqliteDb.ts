@@ -1,16 +1,18 @@
 import Database = require("better-sqlite3");
 import { IDatabaseSchema, IHost, ILogEntry } from "../types/basic";
-import { getDb } from "./native-db";
+import { getDb } from "./db-cache";
 
 /*
   The SqliteDb interface, which clients use to access DB functionality.  
 */
 export default class SqliteDb {
   appName: string;
+  sqlite: Database;
   settings: IDatabaseSchema;
 
-  constructor(appName: string, settings: IDatabaseSchema) {
+  constructor(appName: string, sqlite: Database, settings: IDatabaseSchema) {
     this.appName = appName;
+    this.sqlite = sqlite;
     this.settings = settings;
   }
 }

@@ -2,7 +2,10 @@ import { Msg } from "./ssb-types";
 
 export interface IAppSettings {
   name: string;
-  types: string[];
+  version: string;
+  types: {
+    [key: string]: "read" | "write";
+  };
 }
 
 /* Db Schema */
@@ -16,6 +19,7 @@ export interface IForeignKey {
 }
 
 export interface ITableSchema {
+  type: string;
   fields: {
     [key: string]: IFieldSchema;
   };

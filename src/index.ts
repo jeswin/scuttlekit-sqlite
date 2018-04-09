@@ -1,7 +1,35 @@
+import * as fs from "fs";
+import * as path from "path";
+import exception from "./exception";
 import * as hostEvents from "./host/events";
-import { getDb } from "./sqlite/native-db";
+import { getDb } from "./sqlite/db-cache";
+import * as setup from "./sqlite/setup";
 import SqliteDb from "./sqlite/SqliteDb";
 import { IAppSettings, IDatabaseSchema, IHost } from "./types/basic";
+
+const rootDir = "";
+
+export interface ISystemSettings {
+  [key: string]: string;
+}
+
+/*
+  Get information from existing database, if it exists. 
+  This gets called prior to register, to notify the user whether the database already exists.
+*/
+export async function getSystemSettings(
+  appSettings: IAppSettings
+): ISystemSettings {
+  if (fs.existsSync(path.join(rootDir, appSettings.name))) {
+    const sqlite = await getDb(appSettings.name);
+    const statement = sqlite.prepare(
+      "SELECT key, value FROM scuttlekit_settings"
+    );
+    statement.run();
+  } else {
+    return undefined;
+  }
+}
 
 /*
   Called when a new app registers with ScuttleKit. 
@@ -12,19 +40,8 @@ export async function register(
   schema: IDatabaseSchema,
   host: IHost
 ): Promise<SqliteDb> {
-  return await createDatabase(appSettings, schema, host);
-}
-
-/*
-  Called by ssb-scuttlekit when getService("sqlite") is called.
-  This may be called by the client app multiple times; so we initialize the database connection and cache it.
-  There may also be multiple client apps speaking to us; so the db connection cache will hold multiple databases.
-*/
-export async function init(
-  appSettings: IAppSettings,
-  host: IHost
-): Promise<SqliteDb> {
-  return await load(appSettings, host);
+  const db = await createDatabase(appSettings, schema, host);
+  host.onWrite((record: object) => hostEvents.onWrite(record, db, host));
 }
 
 /*
@@ -38,20 +55,27 @@ async function createDatabase(
   host: IHost
 ) {
   const sqlite = await getDb(appSettings.name);
+  const db = new SqliteDb(appSettings.name, sqlite, schema);
 
   for (const tableName of Object.keys(schema.tables)) {
     const table = schema.tables[tableName];
-    await ddl.createTable(table, sqlite);
+    await setup.createTable(table, db);
   }
 
-  await ddl.createSystemTable({ schema }, sqlite);
-
-  const db = new SqliteDb(appSettings.name, settings);
-
-  // Listen to writes on the host.
-  host.onWrite((record: object) => hostEvents.onWrite(record, db, host));
-
+  await setup.createSystemTable(db);
   return db;
+}
+
+/*
+  Called by ssb-scuttlekit when getService("sqlite") is called.
+  This may be called by the client app multiple times; so we initialize the database connection and cache it.
+  There may also be multiple client apps speaking to us; so the db connection cache will hold multiple databases.
+*/
+export async function init(
+  appSettings: IAppSettings,
+  host: IHost
+): Promise<SqliteDb> {
+  return await load(appSettings, host);
 }
 
 /*

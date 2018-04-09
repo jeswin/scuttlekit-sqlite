@@ -1,5 +1,5 @@
 import { IDbRow, IHost, IQueryResult } from "../types/basic";
-import { getDb } from "./native-db";
+import { getDb } from "./db-cache";
 import SqliteDb from "./SqliteDb";
 
 export async function getBypKey(table: string, pKey: string, db: SqliteDb) {
@@ -7,11 +7,10 @@ export async function getBypKey(table: string, pKey: string, db: SqliteDb) {
 }
 
 export async function insert(table: string, row: IDbRow, db: SqliteDb) {
-  const sqlite = await getDb(db.appName);
   const fieldNames = fields.map(f => f.field).join(", ");
   const values = fields.map(f => f.value);
   const questionMarks = values.map(_ => "?").join(", ");
-  const insert = sqlite.prepare(
+  const insert = db.sqlite.prepare(
     `INSERT INTO ${fieldNames} VALUES (${questionMarks})`
   );
   return insert.run(values);
