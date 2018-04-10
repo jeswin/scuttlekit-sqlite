@@ -41,9 +41,7 @@ export async function create(
   const allTables = Object.keys(schema.tables);
 
   // This is the list of all message types which belong to our app
-  const allTypes = [appSettings.identifier].concat(
-    allTables.map(t => `${appSettings.identifier}-${t}`)
-  );
+  const allTypes = getTypesForSchema(appSettings.identifier, allTables);
 
   // Gotta make sure there are types in appsettings corresponding to all tables.
   const typesInAppSettings = Object.keys(appSettings.types).filter(
@@ -61,16 +59,6 @@ export async function create(
       await setup.createTable(table, db);
     }
     await setup.createSystemTable(db);
-
-    // Now we have to stream all the existing data through.
-    const inputStream = host.getMessageStream(allTypes);
-
-    // We give the client app a chance to change the data
-    // This is so that newer versions are able to alter the schema,
-    // and yet stay compatible with older data.
-    const outputStream = host.transformStream(inputStream);
-
-    outputStream.on("close", () => {});
     return db;
   } else {
     return exception(
@@ -79,6 +67,11 @@ export async function create(
       )}.`
     );
   }
+}
+
+function getTypesForSchema(appIdentifier: string, tables: string[]) {
+  // This is the list of all message types which belong to our app
+  return [appIdentifier].concat(tables.map(t => `${appIdentifier}-${t}`));
 }
 
 /*
@@ -116,7 +109,25 @@ export async function getSystemSettings(
 async function load(appSettings: IAppSettings, host: IHost) {
   const sqlite = await getDb(appSettings.name);
   const settings = await getSystemSettings(sqlite, host);
+
   const schema = JSON.parse(settings.schema) as IDatabaseSchema;
+
+  const allTables = Object.keys(schema.tables);
+  // This is the list of all message types which belong to our app
+  const allTypes = getTypesForSchema(appSettings.identifier, allTables);
+
+  if (!settings.initialized) {
+    // Now we have to stream all the existing data through.
+    const inputStream = host.getMessageStream(allTypes);
+
+    // We give the client app a chance to change the data
+    // This is so that newer versions are able to alter the schema,
+    // and yet stay compatible with older data.
+    const outputStream = host.transformStream(inputStream);
+
+    hostEvents.replay(outputStream);
+  }
+
   const db = new SqliteDb(appSettings.name, sqlite, schema);
 
   // Register to listen to writes on the host.s

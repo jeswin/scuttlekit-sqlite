@@ -31,6 +31,10 @@ export class NonResult {
   }
 }
 
+export async function replay(stream: any, db: SqliteDb, host: IHost) {
+  
+}
+
 export async function onWrite(
   msg: Msg<ILogEntry<IRowMeta>>,
   db: SqliteDb,

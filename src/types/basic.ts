@@ -42,6 +42,7 @@ export interface IDatabaseSchema {
 /* Querying */
 export interface ILogEntryMeta {
   operation: Operation;
+  version: string;
 }
 
 export interface IRowMeta extends ILogEntryMeta {
