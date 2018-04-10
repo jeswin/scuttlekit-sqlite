@@ -37,5 +37,9 @@ export default class MockHost implements IHost {
     return;
   }
 
-  onWrite(cb: (record: object) => void): void {}
+  getMessageStream(): void;
+
+  transformMessage(): void;
+
+  onWrite(cb: (record: Msg<ILogEntry<IRowMeta>>) => void): void {}
 }

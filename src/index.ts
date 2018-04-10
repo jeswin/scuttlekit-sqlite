@@ -1,6 +1,7 @@
 import Database = require("better-sqlite3");
 import * as fs from "fs";
 import * as path from "path";
+import * as R from "ramda";
 import ClientAPI from "./ClientAPI";
 import exception from "./exception";
 import * as hostEvents from "./host/events";
@@ -37,45 +38,53 @@ export async function create(
   host: IHost
 ) {
   const schema = options.schema;
-  const sqlite = await getDb(appSettings.name);
-  const db = new SqliteDb(appSettings.name, sqlite, schema);
-
   const allTables = Object.keys(schema.tables);
-  for (const tableName of allTables) {
-    const table = schema.tables[tableName];
-    await setup.createTable(table, db);
-  }
-  await setup.createSystemTable(db);
 
   // This is the list of all message types which belong to our app
-  const allTypes = allTables.map(t => `${appSettings.identifier}-${t}`);
+  const allTypes = [appSettings.identifier].concat(
+    allTables.map(t => `${appSettings.identifier}-${t}`)
+  );
 
   // Gotta make sure there are types in appsettings corresponding to all tables.
-  const typesInAppSettings = Object.keys(appSettings.types);
-  const typesAreValid = allTypes.every(t => typesInAppSettings.includes(t));
+  const typesInAppSettings = Object.keys(appSettings.types).filter(
+    k => appSettings.types[k] === "write"
+  );
 
-  return typesAreValid
-    ? (() => {
-        // Now we have to stream all the existing data through.
-        const inputStream = host.getMessageStream(
-          [appSettings.identifier].concat(allTypes)
-        );
+  const missing = R.difference(allTypes, typesInAppSettings);
 
-        // We give the client app a chance to change the data
-        // This is so that newer versions are able to alter the schema,
-        // and yet stay compatible with older data.
-        const outputStream = host.transformStream(inputStream);
+  if (!missing.length) {
+    const sqlite = await getDb(appSettings.name);
+    const db = new SqliteDb(appSettings.name, sqlite, schema);
 
-        outputStream.on("close", () => {});
-        return db;
-      })()
-    : exception(``);
+    for (const tableName of allTables) {
+      const table = schema.tables[tableName];
+      await setup.createTable(table, db);
+    }
+    await setup.createSystemTable(db);
+
+    // Now we have to stream all the existing data through.
+    const inputStream = host.getMessageStream(allTypes);
+
+    // We give the client app a chance to change the data
+    // This is so that newer versions are able to alter the schema,
+    // and yet stay compatible with older data.
+    const outputStream = host.transformStream(inputStream);
+
+    outputStream.on("close", () => {});
+    return db;
+  } else {
+    return exception(
+      `MISSING_TYPES: App needs write permissions to message types ${missing.join(
+        ", "
+      )}.`
+    );
+  }
 }
 
 /*
   This deletes the database.
 */
-export async function deleteDatabase(appName: string, host: IHost) {
+export async function remove(appName: string, host: IHost) {
   return;
 }
 

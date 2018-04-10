@@ -13,6 +13,7 @@ export interface IAppSettings {
 /* Db Schema */
 export interface IFieldSchema {
   type: string;
+  required?: boolean;
 }
 
 export interface IForeignKey {
@@ -21,13 +22,12 @@ export interface IForeignKey {
 }
 
 export interface ITableSchema {
-  type: string;
+  encrypted?: boolean;
   fields: {
     [key: string]: IFieldSchema;
   };
-  encrypted: boolean;
-  foreignKeys: IForeignKey[];
-  indexes: {
+  foreignKeys?: IForeignKey[];
+  indexes?: {
     field: string;
     ascending: boolean;
   }[];
