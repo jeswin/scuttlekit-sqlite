@@ -64,7 +64,6 @@ async function onLoad() {
     app,
     version,
     registrationUrl: "/register",
-    db: "sqlite",
     services: { sqlite: { schema } }
   });
 }

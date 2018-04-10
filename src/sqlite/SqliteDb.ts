@@ -8,11 +8,11 @@ import { getDb } from "./db-cache";
 export default class SqliteDb {
   appName: string;
   sqlite: Database;
-  settings: IDatabaseSchema;
+  schema: IDatabaseSchema;
 
-  constructor(appName: string, sqlite: Database, settings: IDatabaseSchema) {
+  constructor(appName: string, sqlite: Database, schema: IDatabaseSchema) {
     this.appName = appName;
     this.sqlite = sqlite;
-    this.settings = settings;
+    this.schema = schema;
   }
 }

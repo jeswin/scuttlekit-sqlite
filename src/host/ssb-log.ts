@@ -56,7 +56,7 @@ export async function mergeMessagesIntoRow(
   db: SqliteDb,
   host: IHost
 ): Promise<MergeResult | undefined> {
-  const unorderedMessages = await host.getMessagesBypKey(table, pKey);
+  const unorderedMessages = await host.getMessagesByPKey(table, pKey);
   const messages = sortMessages(unorderedMessages);
 
   const rowsForKey = await sql.getByPKey(table, pKey, db);

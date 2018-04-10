@@ -1,7 +1,9 @@
+import { Stream } from "stream";
 import { Msg } from "./ssb-types";
 
 export interface IAppSettings {
   name: string;
+  identifier: string;
   version: string;
   types: {
     [key: string]: "read" | "write";
@@ -105,7 +107,12 @@ export interface IPermission {
 export interface IHost {
   getDataDirectory(): string;
   getFeedId(): string;
-  getMessagesBypKey(table: string, pKey: string): Msg<ILogEntry<IRowMeta>>[];
+  getMessagesByPKey(
+    table: string,
+    pKey: string
+  ): Promise<Msg<ILogEntry<IRowMeta>>[]>;
   write(record: ILogEntry<ILogEntryMeta>, params?: IWriteParams): Promise<void>;
-  onWrite(cb: (record: object) => void): void;
+  onWrite(cb: (record: Msg<ILogEntry<IRowMeta>>) => void): void;
+  getMessageStream(types: string[]): Stream;
+  transformStream(input: Stream): Stream;
 }

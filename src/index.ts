@@ -1,5 +1,7 @@
+import Database = require("better-sqlite3");
 import * as fs from "fs";
 import * as path from "path";
+import ClientAPI from "./ClientAPI";
 import exception from "./exception";
 import * as hostEvents from "./host/events";
 import { getDb } from "./sqlite/db-cache";
@@ -20,42 +22,8 @@ export interface ISystemSettings {
   [key: string]: string;
 }
 
-/*
-  Get information from existing database, if it exists. 
-  This gets called prior to register, to notify the user whether the database already exists.
-*/
-export async function getSystemSettings(
-  appName: string,
-  host: IHost
-): Promise<ISystemSettings | void> {
-  if (fs.existsSync(path.join(host.getDataDirectory(), appName))) {
-    const sqlite = await getDb(appName);
-    const statement = sqlite.prepare(
-      "SELECT key, value FROM scuttlekit_settings"
-    );
-    const rows: { key: string; value: string }[] = statement.all();
-    return rows.reduce(
-      (acc, { key, value }) => {
-        return (acc[key] = value), acc;
-      },
-      {} as ISystemSettings
-    );
-  } else {
-    return undefined;
-  }
-}
-
-/*
-  Called when a new app registers with ScuttleKit. 
-  This creates the database. If the database already exists, it is overwritten.
-*/
-export async function register(
-  appSettings: IAppSettings,
-  schema: IDatabaseSchema,
-  host: IHost
-): Promise<SqliteDb> {
-  const db = await createDatabase(appSettings, schema, host);
-  return db;
+export interface IOptions {
+  schema: IDatabaseSchema;
 }
 
 /*
@@ -63,21 +31,72 @@ export async function register(
     The system table is a special table named "scuttlekit_system" which holds key-value pairs.
     The settings are stored with the key "settings".
 */
-async function createDatabase(
+export async function create(
   appSettings: IAppSettings,
-  schema: IDatabaseSchema,
+  options: IOptions,
   host: IHost
 ) {
+  const schema = options.schema;
   const sqlite = await getDb(appSettings.name);
   const db = new SqliteDb(appSettings.name, sqlite, schema);
 
-  for (const tableName of Object.keys(schema.tables)) {
+  const allTables = Object.keys(schema.tables);
+  for (const tableName of allTables) {
     const table = schema.tables[tableName];
     await setup.createTable(table, db);
   }
-
   await setup.createSystemTable(db);
-  return db;
+
+  // This is the list of all message types which belong to our app
+  const allTypes = allTables.map(t => `${appSettings.identifier}-${t}`);
+
+  // Gotta make sure there are types in appsettings corresponding to all tables.
+  const typesInAppSettings = Object.keys(appSettings.types);
+  const typesAreValid = allTypes.every(t => typesInAppSettings.includes(t));
+
+  return typesAreValid
+    ? (() => {
+        // Now we have to stream all the existing data through.
+        const inputStream = host.getMessageStream(
+          [appSettings.identifier].concat(allTypes)
+        );
+
+        // We give the client app a chance to change the data
+        // This is so that newer versions are able to alter the schema,
+        // and yet stay compatible with older data.
+        const outputStream = host.transformStream(inputStream);
+
+        outputStream.on("close", () => {});
+        return db;
+      })()
+    : exception(``);
+}
+
+/*
+  This deletes the database.
+*/
+export async function deleteDatabase(appName: string, host: IHost) {
+  return;
+}
+
+/*
+  Get information from existing database, if it exists. 
+  This gets called prior to register, to notify the user whether the database already exists.
+*/
+export async function getSystemSettings(
+  sqlite: Database,
+  host: IHost
+): Promise<ISystemSettings> {
+  const statement = sqlite.prepare(
+    "SELECT key, value FROM scuttlekit_settings"
+  );
+  const rows: { key: string; value: string }[] = statement.all();
+  return rows.reduce(
+    (acc, { key, value }) => {
+      return (acc[key] = value), acc;
+    },
+    {} as ISystemSettings
+  );
 }
 
 /*
@@ -85,28 +104,16 @@ async function createDatabase(
   This may be called by the client app multiple times; so we initialize the database connection and cache it.
   There may also be multiple client apps speaking to us; so the db connection cache will hold multiple databases.
 */
-export async function init(
-  appSettings: IAppSettings,
-  host: IHost
-): Promise<SqliteDb> {
-  return await load(appSettings, host);
-}
-
-/*
-  Load an existing Database. Throw an error if the database wasn't initialized previously.
-*/
 async function load(appSettings: IAppSettings, host: IHost) {
   const sqlite = await getDb(appSettings.name);
+  const settings = await getSystemSettings(sqlite, host);
+  const schema = JSON.parse(settings.schema) as IDatabaseSchema;
+  const db = new SqliteDb(appSettings.name, sqlite, schema);
 
-  const loadSettingsQuery = sqlite.prepare(
-    "SELECT value FROM scuttlekit_settings WHERE key = 'settings'"
+  // Register to listen to writes on the host.s
+  host.onWrite((record: Msg<ILogEntry<IRowMeta>>) =>
+    hostEvents.onWrite(record, db, host)
   );
 
-  const result = loadSettingsQuery.run(loadSettingsQuery);
-  const db = new SqliteDb(appSettings.name, sqlite, settings);
-
-  // Register to listen to writes on the host.
-  host.onWrite((record: object) => hostEvents.onWrite(record, db, host));
-
-  return db;
+  return new ClientAPI(db, host);
 }

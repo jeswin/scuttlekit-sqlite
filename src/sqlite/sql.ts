@@ -7,13 +7,13 @@ export async function getByPKey(table: string, pKey: string, db: SqliteDb) {
 }
 
 export async function insert(table: string, row: IDbRow, db: SqliteDb) {
-  const fieldNames = fields.map(f => f.field).join(", ");
-  const values = fields.map(f => f.value);
-  const questionMarks = values.map(_ => "?").join(", ");
-  const insert = db.sqlite.prepare(
-    `INSERT INTO ${fieldNames} VALUES (${questionMarks})`
-  );
-  insert.run(values);
+  // const fieldNames = fields.map(f => f.field).join(", ");
+  // const values = fields.map(f => f.value);
+  // const questionMarks = values.map(_ => "?").join(", ");
+  // const insert = db.sqlite.prepare(
+  //   `INSERT INTO ${fieldNames} VALUES (${questionMarks})`
+  // );
+  // insert.run(values);
   return;
 }
 
