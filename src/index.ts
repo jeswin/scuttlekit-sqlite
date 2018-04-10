@@ -5,7 +5,14 @@ import * as hostEvents from "./host/events";
 import { getDb } from "./sqlite/db-cache";
 import * as setup from "./sqlite/setup";
 import SqliteDb from "./sqlite/SqliteDb";
-import { IAppSettings, IDatabaseSchema, IHost } from "./types/basic";
+import {
+  IAppSettings,
+  IDatabaseSchema,
+  IHost,
+  ILogEntry,
+  IRowMeta
+} from "./types/basic";
+import { Msg } from "./types/ssb-types";
 
 const rootDir = "";
 
@@ -48,7 +55,6 @@ export async function register(
   host: IHost
 ): Promise<SqliteDb> {
   const db = await createDatabase(appSettings, schema, host);
-  host.onWrite((record: object) => hostEvents.onWrite(record, db, host));
   return db;
 }
 
@@ -97,7 +103,7 @@ async function load(appSettings: IAppSettings, host: IHost) {
   );
 
   const result = loadSettingsQuery.run(loadSettingsQuery);
-  const db = new SqliteDb(appSettings.name, settings);
+  const db = new SqliteDb(appSettings.name, sqlite, settings);
 
   // Register to listen to writes on the host.
   host.onWrite((record: object) => hostEvents.onWrite(record, db, host));

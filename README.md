@@ -63,9 +63,9 @@ async function onLoad() {
   sdk.init({
     app,
     version,
-    schema,
     registrationUrl: "/register",
-    db: "sqlite"
+    db: "sqlite",
+    services: { sqlite: { schema } }
   });
 }
 ```
