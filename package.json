@@ -2,12 +2,10 @@
   "name": "scuttlekit-sqlite",
   "version": "0.0.1",
   "author": "Isotropy Team<isotropy@agilehead.com>",
-  "contributors": [
-    "Jeswin Kumar<jeswinpk@agilehead.com>"
-  ],
+  "contributors": ["Jeswin Kumar<jeswinpk@agilehead.com>"],
   "scripts": {
     "build": "./build.sh",
-    "test": "mocha dist/test/test.js"
+    "test": "mocha dist/test"
   },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

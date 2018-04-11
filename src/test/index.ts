@@ -14,7 +14,9 @@ function getAppSettings(): IAppSettings {
     identifier: "scuttle-test",
     name: "Scuttle Test",
     types: {
-      customers: "read"
+      "scuttle-test": "write",
+      "scuttle-test-list": "write",
+      "scuttle-test-todo": "write"
     },
     version: "1.0.0"
   };
@@ -48,6 +50,7 @@ describe("scuttlekit-sqlite", () => {
     const appSettings = getAppSettings();
     const schema = getSchema();
     const s = await lib.create(appSettings, { schema }, host);
+    console.log(s);
   });
 
   // it("registers", async () => {

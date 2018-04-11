@@ -17,7 +17,7 @@ import {
 } from "./types/basic";
 import { Msg } from "./types/ssb-types";
 
-const rootDir = "";
+const rootDir = __dirname;
 
 export interface ISystemSettings {
   [key: string]: string;
@@ -40,31 +40,40 @@ export async function create(
   const schema = options.schema;
   const allTables = Object.keys(schema.tables);
 
-  // This is the list of all message types which belong to our app
-  const allTypes = getTypesForSchema(appSettings.identifier, allTables);
+  // Validate the identifier. alphabets, numbers, hashes, underscores only
+  const regexp = /^[a-zA-Z0-9-_]+$/;
 
-  // Gotta make sure there are types in appsettings corresponding to all tables.
-  const typesInAppSettings = Object.keys(appSettings.types).filter(
-    k => appSettings.types[k] === "write"
-  );
+  if (regexp.test(appSettings.identifier)) {
+    // This is the list of all message types which belong to our app
+    const allTypes = getTypesForSchema(appSettings.identifier, allTables);
 
-  const missing = R.difference(allTypes, typesInAppSettings);
+    // Gotta make sure there are types in appsettings corresponding to all tables.
+    const typesInAppSettings = Object.keys(appSettings.types).filter(
+      k => appSettings.types[k] === "write"
+    );
 
-  if (!missing.length) {
-    const sqlite = await getDb(appSettings.name);
-    const db = new SqliteDb(appSettings.name, sqlite, schema);
+    const missing = R.difference(allTypes, typesInAppSettings);
 
-    for (const tableName of allTables) {
-      const table = schema.tables[tableName];
-      await setup.createTable(table, db);
+    if (!missing.length) {
+      const sqlite = await getDb(path.join(rootDir, appSettings.identifier));
+      const db = new SqliteDb(appSettings.name, sqlite, schema);
+
+      for (const tableName of allTables) {
+        const table = schema.tables[tableName];
+        await setup.createTable(table, db);
+      }
+      await setup.createSystemTable(db);
+      return db;
+    } else {
+      return exception(
+        `MISSING_TYPES: App needs write permissions to message types ${missing.join(
+          ", "
+        )}.`
+      );
     }
-    await setup.createSystemTable(db);
-    return db;
   } else {
     return exception(
-      `MISSING_TYPES: App needs write permissions to message types ${missing.join(
-        ", "
-      )}.`
+      `INVALID_APP_IDENTIFIER: App identifier should be alphanumeric with optional hyphens or underscores.`
     );
   }
 }
