@@ -1,5 +1,9 @@
 import exception from "../exception";
-import { mergeMessagesIntoRow, MergeToDelete, MergeToUpdate } from "../host/ssb-log";
+import {
+  mergeMessagesIntoRow,
+  MergeToDelete,
+  MergeToUpdate
+} from "../host/ssb-log";
 import { getDb } from "../sqlite/db-cache";
 import * as sql from "../sqlite/sql";
 import SqliteDb from "../sqlite/SqliteDb";
@@ -31,37 +35,35 @@ export class NonResult {
   }
 }
 
-export async function replay(stream: any, db: SqliteDb, host: IHost) {
-  
+export function replayMessages(db: SqliteDb, host: IHost) {
+  return async (x: any) => {};
 }
 
-export async function onWrite(
-  msg: Msg<ILogEntry<IRowMeta>>,
-  db: SqliteDb,
-  host: IHost
-) {
-  const logEntry = msg.value.content;
-  const table = logEntry.__meta.table;
+export function onWrite(db: SqliteDb, host: IHost) {
+  return async (msg: Msg<ILogEntry<IRowMeta>>) => {
+    const logEntry = msg.value.content;
+    const table = logEntry.__meta.table;
 
-  const mergeResult = logEntry.type.startsWith(`${db.appName}-`)
-    ? logEntry.__meta.transactionId
-      ? new NonResult("AWAIT_TRANSACTION_COMMIT", logEntry)
-      : await mergeMessagesIntoRow(
-          msg,
-          logEntry.__meta.table,
-          logEntry.__meta.pKey,
-          db,
-          host
-        )
-    : undefined;
+    const mergeResult = logEntry.type.startsWith(`${db.appName}-`)
+      ? logEntry.__meta.transactionId
+        ? new NonResult("AWAIT_TRANSACTION_COMMIT", logEntry)
+        : await mergeMessagesIntoRow(
+            msg,
+            logEntry.__meta.table,
+            logEntry.__meta.pKey,
+            db,
+            host
+          )
+      : undefined;
 
-  return mergeResult
-    ? mergeResult instanceof NonResult
-      ? mergeResult
-      : mergeResult instanceof MergeToDelete
-        ? sql.del(table, mergeResult.pKey, db)
-        : mergeResult instanceof MergeToUpdate
-          ? sql.update(table, mergeResult.row, db)
-          : sql.insert(table, mergeResult.row, db)
-    : undefined;
+    const result = mergeResult
+      ? mergeResult instanceof NonResult
+        ? mergeResult
+        : mergeResult instanceof MergeToDelete
+          ? sql.del(table, mergeResult.pKey, db)
+          : mergeResult instanceof MergeToUpdate
+            ? sql.update(table, mergeResult.row, db)
+            : sql.insert(table, mergeResult.row, db)
+      : undefined;
+  };
 }

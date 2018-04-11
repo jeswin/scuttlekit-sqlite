@@ -116,24 +116,14 @@ async function load(appSettings: IAppSettings, host: IHost) {
   // This is the list of all message types which belong to our app
   const allTypes = getTypesForSchema(appSettings.identifier, allTables);
 
-  if (!settings.initialized) {
-    // Now we have to stream all the existing data through.
-    const inputStream = host.getMessageStream(allTypes);
-
-    // We give the client app a chance to change the data
-    // This is so that newer versions are able to alter the schema,
-    // and yet stay compatible with older data.
-    const outputStream = host.transformStream(inputStream);
-
-    hostEvents.replay(outputStream);
-  }
-
   const db = new SqliteDb(appSettings.name, sqlite, schema);
 
+  if (!settings.initialized) {
+    await host.replayMessages(hostEvents.replayMessages(db, host));
+  }
+
   // Register to listen to writes on the host.s
-  host.onWrite((record: Msg<ILogEntry<IRowMeta>>) =>
-    hostEvents.onWrite(record, db, host)
-  );
+  host.onWrite(hostEvents.onWrite(db, host));
 
   return new ClientAPI(db, host);
 }

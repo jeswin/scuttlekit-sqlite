@@ -113,7 +113,7 @@ export interface IHost {
     pKey: string
   ): Promise<Msg<ILogEntry<IRowMeta>>[]>;
   write(record: ILogEntry<ILogEntryMeta>, params?: IWriteParams): Promise<void>;
-  onWrite(cb: (record: Msg<ILogEntry<IRowMeta>>) => void): void;
-  getMessageStream(types: string[]): Stream;
-  transformStream(input: Stream): Stream;
+  onWrite(cb: (record: Msg<ILogEntry<IRowMeta>>) => Promise<void>): void;
+  // TODO:FIXME
+  replayMessages(cb: (stream: any) => Promise<void>): void;  
 }
