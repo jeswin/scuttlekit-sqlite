@@ -38,22 +38,19 @@ const schema = {
   tables: {
     todo: {
       fields: {
-        id: { type: "string" },
-        text: { type: "string" },
+        text: { type: "string", maxLength: 200 },
         dueDate: { type: "string" },
         completed: { type: "boolean" },
         timestamp: { type: "number", required: false }
       },
       encrypted: { type: "boolean" },
-      pKey: "id",
-      foreignKeys: [{ field: "listId", table: "lists", pKey: "id" }]
+      foreignKeys: [{ field: "listId", table: "lists" }]
     },
     list: {
       fields: {
         id: { type: "string" },
         name: { type: "string" }
-      },
-      pKey: "id"
+      }
     }
   }
 };

@@ -28,15 +28,26 @@ export interface IOptions {
 }
 
 /*
-    Create all the tables in db settings. And finally write the settings into the system table.
-    The system table is a special table named "scuttlekit_system" which holds key-value pairs.
-    The settings are stored with the key "settings".
+    1. Create all the tables defined in the schema, and a system table.
+    The system table is a key-val structure, used internally by ScuttleKit.
+    
+    2. If the DB already exists, it is overwritten.
+
+    3. Schema changes should be version changes in the App. 
+    It is the responsibility of ScuttleKit to call create() when the version changes.
 */
 export async function create(
   appSettings: IAppSettings,
   options: IOptions,
   host: IHost
 ) {
+  const dbPath = path.join(rootDir, `${appSettings.identifier}.sqlite`);
+
+  // Delete if the file exists.
+  if (fs.existsSync(dbPath)) {
+    fs.unlinkSync(dbPath);
+  }
+
   const schema = options.schema;
   const allTables = Object.keys(schema.tables);
 
@@ -55,7 +66,7 @@ export async function create(
     const missing = R.difference(allTypes, typesInAppSettings);
 
     if (!missing.length) {
-      const sqlite = await getDb(path.join(rootDir, appSettings.identifier));
+      const sqlite = await getDb(dbPath);
       const db = new SqliteDb(appSettings.name, sqlite, schema);
 
       for (const tableName of allTables) {
@@ -78,16 +89,23 @@ export async function create(
   }
 }
 
+/*
+  This is the list of all message types which belong to our app
+*/
 function getTypesForSchema(appIdentifier: string, tables: string[]) {
-  // This is the list of all message types which belong to our app
   return [appIdentifier].concat(tables.map(t => `${appIdentifier}-${t}`));
 }
 
 /*
   This deletes the database.
 */
-export async function remove(appName: string, host: IHost) {
-  return;
+export async function remove(appId: string, host: IHost) {
+  const dbPath = path.join(rootDir, appId);
+
+  // Delete if the file exists.
+  if (fs.existsSync(dbPath)) {
+    fs.unlinkSync(dbPath);
+  }
 }
 
 /*
