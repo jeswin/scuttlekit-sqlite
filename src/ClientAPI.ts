@@ -14,6 +14,7 @@ import {
   Operation
 } from "./types/basic";
 import { uuidv4 } from "./utils/random";
+import * as sequences from "./utils/sequences";
 
 function getTableName(appName: string, table: string) {
   return `${appName}-${table}`;
@@ -28,7 +29,8 @@ function defaultPermissions(feedId: string): IPermission[] {
   return [
     {
       feedId,
-      fields: ["*"]
+      fields: ["*"],
+      owner: true
     }
   ];
 }
@@ -48,14 +50,15 @@ export default class ClientAPI {
 
   async insert(
     table: string,
-    pKey: string,
     row: object,
     options: IRowEditOptions,
     db: SqliteDb,
     host: IHost
   ) {
+    const feedId = host.getFeedId();
     const tableSchema = db.schema.tables[table];
-    const [rowId, feedId] = pKey.split("_");
+    const nextId = await sequences.next(table);
+    const pKey = `${feedId}_${nextId}`;
 
     const authorId = host.getFeedId();
     return feedId === authorId

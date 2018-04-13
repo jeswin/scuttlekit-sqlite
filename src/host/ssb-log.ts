@@ -8,6 +8,7 @@ import {
   IFields,
   IHost,
   ILogEntry,
+  IPermission,
   IRowMeta,
   ITableSchema,
   Operation
@@ -131,7 +132,7 @@ function insert(
       return {
         ...fields,
         __deleted: false,
-        __permissions: `${msg.value.author}:"*"`,
+        __permissions: JSON.stringify(""),
         __timestamp: 0
       };
     } else {
@@ -147,12 +148,13 @@ function update(
   msg: Msg<ILogEntry<IEditMeta>>
 ): IDbRow | MergeFail {
   const logEntry = msg.value.content;
-  const permissions = getPermissionsFromString(row.__permissions);
+  const permissions = JSON.parse(row.__permissions) as IPermission[];
   const userPermission = permissions.find(p => p.feedId === msg.value.author);
   const fields = basicFieldsFromMessage(logEntry);
   const hasPermission =
     userPermission &&
-    (userPermission.fields.includes("*") ||
+    (userPermission.owner ||
+      userPermission.fields.includes("*") ||
       Object.keys(fields).every(f => userPermission.fields.includes(f)));
   return hasPermission
     ? mergeFieldsIntoRow(row, fields)
@@ -164,9 +166,9 @@ function del(
   msg: Msg<ILogEntry<IRowMeta>>
 ): MergeToDelete | MergeFail {
   const logEntry = msg.value.content;
-  const permissions = getPermissionsFromString(row.__permissions);
+  const permissions = JSON.parse(row.__permissions) as IPermission[];
   const userPermission = permissions.find(p => p.feedId === msg.value.author);
-  const hasPermission = userPermission && userPermission.fields.includes("*");
+  const hasPermission = userPermission && userPermission.owner;
   return hasPermission
     ? new MergeToDelete(logEntry.__meta.pKey)
     : new MergeFail("NO_PERMISSION");
@@ -176,21 +178,9 @@ function sortMessages(entries: Msg<ILogEntry<IRowMeta>>[]) {
   return entries;
 }
 
-export function parsepKey<T>(msg: Msg<ILogEntry<IEditMeta>>): [string, string] {
+export function parsePKey<T>(msg: Msg<ILogEntry<IEditMeta>>): [string, string] {
   const [rowId, feedId] = msg.value.content.pKey.split("_");
   return [rowId, feedId];
-}
-
-export function getPermissionsFromString(strPerms?: string) {
-  return strPerms
-    ? strPerms.split(";").map(f => {
-        const [feedId, strFields] = f.split(":");
-        return {
-          feedId,
-          fields: strFields.split(",")
-        };
-      })
-    : [];
 }
 
 export function basicFieldsFromMessage(
@@ -210,17 +200,6 @@ export function mergeFieldsIntoRow(row: IDbRow, fields: IFields) {
     row[key] = fields[key];
   }
   return row;
-}
-
-export function getPermissionsField(logEntry: ILogEntry<IEditMeta>) {
-  /*
-    Permissions are going to look like feedId1:*;feedId2:field1,field2;feedId3:*;...
-    @hxGxqPrplLjRG2vtjQL87abX4QKqeLgCwQpS730nNwE=.ed25519;
-    @jlaasdewqLjjflkdjfddfkljsdflksjdflfjfjjfk3al=.ed25519:field1,field2
-  */
-  return logEntry.__meta.permissions.map(
-    p => `${p.feedId}:${!p.fields ? "*" : p.fields.join(",")}`
-  );
 }
 
 export function getFieldsFromLogEntry(logEntry: ILogEntry<any>) {

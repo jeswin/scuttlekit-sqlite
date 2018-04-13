@@ -76,6 +76,7 @@ export interface IWriteParams {
 }
 
 export interface IFields {
+  __permissions: string;
   [name: string]: string | number | boolean;
 }
 
@@ -101,7 +102,8 @@ export enum Operation {
 
 export interface IPermission {
   feedId: string;
-  fields?: string[];
+  fields: string[];
+  owner: boolean;
 }
 
 /* Host */
@@ -115,5 +117,5 @@ export interface IHost {
   write(record: ILogEntry<ILogEntryMeta>, params?: IWriteParams): Promise<void>;
   onWrite(cb: (record: Msg<ILogEntry<IRowMeta>>) => Promise<void>): void;
   // TODO:FIXME
-  replayMessages(cb: (stream: any) => Promise<void>): void;  
+  replayMessages(cb: (stream: any) => Promise<void>): void;
 }
