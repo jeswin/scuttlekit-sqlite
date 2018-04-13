@@ -233,11 +233,28 @@ Triggers are similar to those one would find in typical databases, but with rest
 async function alertOnNewSong() {
   // Valid values are insert, update and delete.
   const triggerConfig = { type: "insert" };
-  sdk.db.trigger("song", triggerConfig, song => {
+  const triggerId = await sdk.db.trigger("song", triggerConfig, song => {
     console.log(song);
   });
 }
 ```
+
+A trigger may be removed at any point.
+
+```js
+async function removeSongAlerts(triggerId) {
+  await sdk.db.untrigger(triggerId);
+}
+```
+
+### Notifications
+
+There is build in support for notifications and messages via the notifications service (sdk.notifications).
+
+Send a message to another user
+```js
+
+``` 
 
 ### Schema Changes (Incomplete!)
 
