@@ -2,29 +2,29 @@
 
 NOTICE: This is work in progress. Planning for an alpha by the end of April.
 
-ScuttleKit is a framework that simplifies the development of distributed apps on the Secure ScuttleButt (SSB) peer-to-peer network.
-ScuttleKit apps run in the browser, and requires the end-user to be on the SSB network. If the
+ScuttleKit simplifies the development of distributed apps that run on the Secure ScuttleButt (SSB) peer-to-peer network. ScuttleKit apps run in the browser and requires the end-user to be on the SSB network. If the end user is not already on the network, an alert is shown.
 
 # Creating a client
 
-Include the scuttlekit-client library on a web page for easy access to the ScuttleKit API.
-You can either add scuttlekit-client with a script tag, or use it via npm if you're using a JS bundler (like browserify, parcel or webpack).
+Include the scuttlekit-client library on a web page for easy access to the ScuttleKit API. You can either add scuttlekit-client with a script tag, or use it via npm if you're using a JS bundler (like browserify, parcel or webpack).
 
 ```bash
 # Use via yarn/npm or just include a <script> tag
 yarn add scuttlekit-client
 ```
 
-An app should initialize the ScuttleKit SDK on page load (DOMContentLoaded). If the app is not registered on the end user's machine, the SDK will redirect the browser to a ScuttleKit hosted page (localhost:1103) where the user can choose to grant requested permissions. Once the user grants permissions, the app is loaded. There may be a delay on first load, since the local application database needs to be created.
+An app should initialize the ScuttleKit SDK on page load (DOMContentLoaded). If the app is not registered on the end user's machine, the SDK will redirect the browser to a ScuttleKit hosted page (localhost:1103) where the user can choose to grant requested permissions. Once the user grants permissions, the browser is redirected to a page mentioned in configuration (see successUrl below). There may be a delay on first load, since the local database needs to be created.
 
-As part of the registration, the developer needs to supply the appName, version, and database schema to ScuttleKit.
-Primary key for each table is an auto-generated string column called \_\_id. This need not specified in the schema.
+As part of the registration, the developer needs to supply the appName, version, and database schema to ScuttleKit. Primary key for each table is an auto-generated string column called \_\_id. This need not specified in the schema.
 
 ```js
 import ScuttleKit from "scuttlekit-client";
 
-// Unique name for your app.
-const appName = "scuttledo";
+// Your app's name.
+const name = "Scuttle Do";
+
+// A unique identifier for your app
+const identifier = "scuttledo";
 
 // Your app/schema version
 const version = "1.0.0";
@@ -33,6 +33,7 @@ const version = "1.0.0";
 // If a lower version is installed on the user's computer, an error is shown.
 const sdkCompatibility = "^0.0.1";
 
+// This is the database schema
 const schema = {
   tables: {
     todo: {
@@ -58,78 +59,34 @@ const schema = {
 document.addEventListener("DOMContentLoaded", async function(event) {
   const sdk = new ScuttleKit();
   sdk.init({
-    app,
+    name,
+    identifier,
     version,
-    registrationUrl: "/register",
-    services: { sqlite: { schema } }
+    types: {
+      "scuttledo": "write",
+      "scuttledo-todo": "write",
+      "scuttledo-list": "write"
+    }
+    registration: {
+      successUrl: "/register"
+    },
+    schema
   });
 });
 ```
 
-# Services
-
-There are currently two services available on ScuttleKit - Messages and Sqlite.
-To access a service, use the getService() API.
-
-## ScuttleKit Messages Service
-
-The Messages Service lets you message peers and receive messages.
-Since it is similar to how events work, it may be used for notifications.
-
-Sending a Message to a list of people. Messages are always encrypted.
-
-```js
-async function sendMessage() {
-  const messages = sdk.getService("messages");
-  const type = "greeting";
-  const recipients = ["bobs-id", "carols-id"];
-  const data = { text: "Hello, world" };
-  messages.send(type, recipients, data);
-}
-```
-
-Sending a message to everyone. Messages are unencrypted.
-
-```js
-async function sendMessage() {
-  const messages = sdk.getService("messages");
-  const type = "greeting";
-  const data = { text: "Hello everyone"; ;
-  messages.broadcast(type, data);
-}
-```
-
-Listening to events
-
-```js
-async function sendMessage() {
-  const messages = sdk.getService("messages");
-  messages.subscribe("greeting", message => {
-    const sender = message.sender;
-    const text = message.data.text;
-    console.log(`${sender} sent ${text}.`);
-  });
-}
-```
-
-## ScuttleKit Sqlite Service
-
-Scuttlekit Sqlite provides an easy to use relational view of the underlying peer-to-peer replicated log.
-
 ### Insert a Row
 
-Insert an object. The primary key (\_\_id) is an autogenerated number that keeps increases, but may have gaps.
-The newly generated \_\_id is returned by the insert() function.
+Insert an object. The primary key (\_\_id) is an autogenerated number that keeps increases, but may have gaps. The newly generated \_\_id is returned by the insert() function.
 
 ```js
 async function addTodo(todo) {
-  const db = sdk.getService("sqlite");
   const todo = {
     task: "But oranges",
     priority: 1,
     dueDate: "13-04-2018"
   };
-  const result = await db.insert("todo", todo);
+  const result = await sdk.db.insert("todo", todo);
   console.log("The primary key is", result.__id);
 }
 ```
@@ -140,8 +97,7 @@ You can write regular SQL queries to fetch data from the underlying sqlite datab
 
 ```js
 async function loadTodos(date) {
-  const db = sdk.getService("sqlite");
-  return await db.query(`SELECT * FROM todos WHERE date='$date'`, {
+  return await sdk.db.query(`SELECT * FROM todos WHERE date='$date'`, {
     $date: date
   });
 }
@@ -151,8 +107,7 @@ You can use joins, sure!
 
 ```js
 async function loadTodosByListName(list) {
-  const db = sdk.getService("sqlite");
-  return await db.query(
+  return await sdk.db.query(
     `SELECT * FROM todos JOIN lists ON todos.listId = lists.__id WHERE lists.name='$list'`,
     { $list: list }
   );
@@ -161,13 +116,11 @@ async function loadTodosByListName(list) {
 
 ### Update a Row
 
-Update an object. Make sure you pass in the primary key, in addition to the fields to be updated.
-If \_\_id is missing, the statement will not execute.
+Update an object. Make sure you pass in the primary key, in addition to the fields to be updated. If \_\_id is missing, the statement will not execute.
 
 ```js
 async function setCompleted(id) {
-  const db = sdk.getService("sqlite");
-  return await db.update("todo", id, completed: true });
+  return await sdk.db.update("todo", id, completed: true });
 }
 ```
 
@@ -177,29 +130,25 @@ Delete a todo. Remember that the data is only deleted from the sqlite view, and 
 
 ```js
 async function deleteTodo(id) {
-  const db = sdk.getService("sqlite");
-  return await db.del("todo", id);
+  return await sdk.db.del("todo", id);
 }
 ```
 
 ### Permissions
 
-When a row is written, a set of permissions are also written. The permissions array governs how the row may be modified.
-Each permissions object in the array has three propertyies:
+When a row is written, a set of permissions are also written. The permissions array governs how the row may be modified. Each permissions object in the array has three propertyies:
 
 * user: the public key of a user
 * owner: boolean which gives the user full access including delete, and changing permissions.
 * fields: An array of fields to which a user has access. '\*' signifies access to all fields.
 
-The author of the row will usually set oneself as the owner, getting complete access to the row.
-An owner can modify any field in the row, or delete or, or change permissions. The toolkit ensures that atleast one person owns the row.
+The author of the row will usually set oneself as the owner, getting complete access to the row. An owner can modify any field in the row, or delete or, or change permissions. The toolkit ensures that atleast one person owns the row.
 
 Here's how Alice can allow Bob to edit a Todo. Bob can edit all fields, but cannot delete or change permissions.
 
 ```js
 async function createSharedTodo(todo) {
-  const db = sdk.getService("sqlite");
-  return await db.insert("todo", todo, {
+  return await sdk.db.insert("todo", todo, {
     permissions: [
       { user: "alices-public-key", owner: true },
       { user: "bobs-public-key", fields: ["*"] }
@@ -212,18 +161,15 @@ Bob can now edit an entry created by Alice. In the following example, assume tha
 
 ```js
 async function completeSharedTodo(__id) {
-  const db = sdk.getService("sqlite");
-  return await db.update("todo", { __id, completed: true });
+  return await sdk.db.update("todo", { __id, completed: true });
 }
 ```
 
-Write permissions can be restricted to specific fields.
-In the following example, Bob is only allowed to edit the 'completed' field.
+Write permissions can be restricted to specific fields. In the following example, Bob is only allowed to edit the 'completed' field.
 
 ```js
 async function createSharedTodo(todo) {
-  const db = sdk.getService("sqlite");
-  return await db.insert("todo", todo, {
+  return await sdk.db.insert("todo", todo, {
     permissions: [
       { user: "alices-public-key", owner: true },
       { user: "bobs-public-key", fields: ["completed"] }
@@ -232,13 +178,11 @@ async function createSharedTodo(todo) {
 }
 ```
 
-Alice can modify permissions during updation as well, and not just during an insert.
-Only owners can do that.
+Alice can modify permissions during updation as well, and not just during an insert. Only owners can do that.
 
 ```js
 async function assignPermissions(id) {
-  const db = sdk.getService("sqlite");
-  return await db.update(
+  return await sdk.db.update(
     "todo",
     { id },
     {
@@ -253,8 +197,7 @@ async function assignPermissions(id) {
 
 ### Transactions
 
-A ScuttleKit transaction can be used to process a list of operations (such as insert, update etc) together.
-If an operation has the transaction property set, the corresponding row will not be updated until the transaction is committed.
+A ScuttleKit transaction can be used to process a list of operations (such as insert, update etc) together. If an operation has the transaction property set, the corresponding row will not be updated until the transaction is committed.
 
 Do note that they are not the same as a database transaction.
 
@@ -263,24 +206,36 @@ Do note that they are not the same as a database transaction.
 
 ```js
 async function addTodoAndDeleteAnother(newTodo, oldTodoId) {
-  const db = sdk.getService("sqlite");
-  const transaction = db.createTransaction();
-  await db.insert("todo", newTodo, { transaction });
-  await db.del("todo", oldTodoId, { transaction });
-  await db.completeTransaction(transaction);
+  const transaction = sdk.db.createTransaction();
+  await sdk.db.insert("todo", newTodo, { transaction });
+  await sdk.db.del("todo", oldTodoId, { transaction });
+  await sdk.db.completeTransaction(transaction);
 }
 ```
 
-Sometimes, it is necessary to see the state of uncommited data. You can do this with the get() function.
-Here's a simple example.
+Sometimes, it is necessary to see the state of uncommited data. You can do this with the get() function. Here's a simple example.
 
 ```js
 async function addTodoAndDeleteAnother(newTodo, oldTodoId) {
-  const db = sdk.getService("sqlite");
-  const transaction = db.createTransaction();
-  const { __id } = await db.insert("todo", newTodo, { transaction });
-  const newlyInsertedTodo = await db.get("todo", __id, { transaction });
-  await db.completeTransaction(transaction);
+  const transaction = sdk.db.createTransaction();
+  const { __id } = await sdk.db.insert("todo", newTodo, { transaction });
+  const newlyInsertedTodo = await sdk.db.get("todo", __id, { transaction });
+  await sdk.db.completeTransaction(transaction);
+}
+```
+
+### Triggers
+
+ScuttleKit lets you set triggers that will be called when data is modified.
+Triggers are similar to those one would find in typical databases, but with restrictions. If the record is modified in a transaction, the trigger fires only when the transaction completes.
+
+```js
+async function alertOnNewSong() {
+  // Valid values are insert, update and delete.
+  const triggerConfig = { type: "insert" };
+  sdk.db.trigger("song", triggerConfig, song => {
+    console.log(song);
+  });
 }
 ```
 
@@ -339,7 +294,7 @@ const schema = {
 
   //Note that the db writes in onTransformComplete skip the SSB log.
   onTransformComplete: (db) => {
-    const todos = await db.query("SELECT * FROM todos");
+    const todos = await sdk.db.query("SELECT * FROM todos");
     const assigneeNames = todos.map(t => t.assignee);
     for (const assigneeName of assigneeNames) {
       db.insert("assignee", { name: assigneeName })
