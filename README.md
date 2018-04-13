@@ -1,37 +1,36 @@
-NOTE: This is work in progress. Planning for an alpha by the end of April.
-See https://www.github.com/jeswin/ssb-scuttlekit
+# ScuttleKit
 
-## Creating a client
+NOTICE: This is work in progress. Planning for an alpha by the end of April.
 
-Include the scuttlekit-client library on a web page for easy access to the ScuttleKit SDK.
+ScuttleKit is a framework that simplifies the development of distributed apps on the Secure ScuttleButt (SSB) peer-to-peer network.
+ScuttleKit apps run in the browser, and requires the end-user to be on the SSB network. If the
+
+# Creating a client
+
+Include the scuttlekit-client library on a web page for easy access to the ScuttleKit API.
 You can either add scuttlekit-client with a script tag, or use it via npm if you're using a JS bundler (like browserify, parcel or webpack).
 
 ```bash
-# Either install via yarn/npm or include a <script> tag
+# Use via yarn/npm or just include a <script> tag
 yarn add scuttlekit-client
 ```
 
-Start ScuttleKit on page load. If the app is not registered, the SDK will redirect the browser to a ScuttleKit hosted page (on port 1103) where the user can choose to grant requested permissions. After granting permissions (or denying them), the browser is redirected to a callback url with a token. The sdk will store the token in local storage for long term use, and is sent with every request made to the ScuttleKit server.
+An app should initialize the ScuttleKit SDK on page load (DOMContentLoaded). If the app is not registered on the end user's machine, the SDK will redirect the browser to a ScuttleKit hosted page (localhost:1103) where the user can choose to grant requested permissions. Once the user grants permissions, the app is loaded. There may be a delay on first load, since the local application database needs to be created.
 
-As part of the registration, the developer needs to supply the database schema to ScuttleKit.
-In addition to various fields which make up the view, the schema defines primary keys and foreign keys as well. Primary keys will always be GUIDs.
-
-See the example below.
+As part of the registration, the developer needs to supply the appName, version, and database schema to ScuttleKit.
+Primary key for each table is an auto-generated string column called \_\_id. This need not specified in the schema.
 
 ```js
-// Assuming you're using npm/yarn and a build tool like browserify or webpack
-//   call this function after the page Loads.
 import ScuttleKit from "scuttlekit-client";
 
 // Unique name for your app.
 const appName = "scuttledo";
 
 // Your app/schema version
-// This is stored against each record.
 const version = "1.0.0";
 
-//Which version of the ScuttleKit SDK are you targeting?
-//If a lower version is installed on the user's computer, an error is displayed.
+// Version of the ScuttleKit SDK you need.
+// If a lower version is installed on the user's computer, an error is shown.
 const sdkCompatibility = "^0.0.1";
 
 const schema = {
@@ -55,7 +54,8 @@ const schema = {
   }
 };
 
-async function onLoad() {
+// Init on Page Load
+document.addEventListener("DOMContentLoaded", async function(event) {
   const sdk = new ScuttleKit();
   sdk.init({
     app,
@@ -63,38 +63,64 @@ async function onLoad() {
     registrationUrl: "/register",
     services: { sqlite: { schema } }
   });
+});
+```
+
+# Services
+
+There are two services currently available on ScuttleKit - Messages and Sqlite.
+
+## ScuttleKit Messages Service
+
+The Messages Service lets you message peers and receive messages.
+Since it is similar to how events work, it may be used for notifications.
+
+Sending a Message to a list of people. Messages are always encrypted.
+
+```js
+async function sendMessage() {
+  const messages = sdk.getService("messages");
+  const type = "greeting";
+  const recipients = ["bobs-id", "carols-id"];Messages are always encrypted.
+  const data = { text: "Hello, world" };
+  messages.send(type, recipients, data);
 }
 ```
 
-### Reading Data
+Sending a message to everyone. Messages are always unencrypted.
+
+```js
+async function sendMessage() {
+  const messages = sdk.getService("messages");
+  const type = "greeting";
+  const data = { text: "Hello everyone"; ;
+  messages.broadcast(type, data);
+}
+```
+
+Listening to events
+
+```js
+async function sendMessage() {
+  const messages = sdk.getService("messages");
+  messages.subscribe("greeting", message => {
+    const sender = message.sender;
+    const text = message.data.text;
+    console.log(`${sender} sent ${text}.`);
+  })
+}
+```
+
+## ScuttleKit Sqlite Service
+
+Scuttlekit Sqlite provides an easy to use relational view of the underlying peer-to-peer replicated log.
+
+### Insert a Row
 
 To access the underlying sqlite database, use the getService() API.
 Every row will have a primary key named \_\_id.
 
-```js
-async function loadTodos(date) {
-  const db = sdk.getService("sqlite");
-  return await db.query(`SELECT * FROM todos WHERE date='$date'`, {
-    $date: date
-  });
-}
-```
-
-You can use joins, sure. Remember that the primary key is named \_\_id.
-
-```js
-async function loadTodosByListName(list) {
-  const db = sdk.getService("sqlite");
-  return await db.query(
-    `SELECT * FROM todos JOIN lists ON todos.listId = lists.__id WHERE lists.name='$list'`,
-    { $list: list }
-  );
-}
-```
-
-### Insert a Row
-
-Insert an object. The primary key is an autogenerated number that keeps increases, but may have gaps.
+Insert an object. The primary key (\_\_id) is an autogenerated number that keeps increases, but may have gaps.
 The newly generated \_\_id is returned by the insert() function.
 
 ```js
@@ -110,18 +136,29 @@ async function addTodo(todo) {
 }
 ```
 
-Corresponding SSB write:
+### Reading Data
+
+You can write regular SQL queries to fetch data from the underlying sqlite database.
 
 ```js
-sbot.publish({
-  type: "scuttledo-todo",
-  __id: "your-feed-id_33", //record 33
-  task: "But oranges",
-  priority: 1,
-  dueDate: "13-04-2018",
-  __permissions: [{ user: "your-id", owner: true, fields: [] }],
-  __deleted: false
-});
+async function loadTodos(date) {
+  const db = sdk.getService("sqlite");
+  return await db.query(`SELECT * FROM todos WHERE date='$date'`, {
+    $date: date
+  });
+}
+```
+
+You can use joins, sure!
+
+```js
+async function loadTodosByListName(list) {
+  const db = sdk.getService("sqlite");
+  return await db.query(
+    `SELECT * FROM todos JOIN lists ON todos.listId = lists.__id WHERE lists.name='$list'`,
+    { $list: list }
+  );
+}
 ```
 
 ### Update a Row
@@ -132,18 +169,8 @@ If \_\_id is missing, the statement will not execute.
 ```js
 async function setCompleted(id) {
   const db = sdk.getService("sqlite");
-  return await db.update("todo", { __id: id, completed: true });
+  return await db.update("todo", id, completed: true });
 }
-```
-
-Corresponding SSB write:
-
-```js
-sbot.publish({
-  type: "scuttledo-todo",
-  __id,
-  completed: true
-});
 ```
 
 ### Delete a Row
@@ -153,21 +180,11 @@ Delete a todo. Remember that the data is only deleted from the sqlite view, and 
 ```js
 async function deleteTodo(id) {
   const db = sdk.getService("sqlite");
-  return await db.del("todo", { __id: id });
+  return await db.del("todo", id);
 }
 ```
 
-Corresponding SSB write:
-
-```js
-sbot.publish({
-  type: "scuttledo-todo",
-  __id,
-  __isDeleted: true
-});
-```
-
-## Permissions
+### Permissions
 
 When a row is written, a set of permissions are also written. The permissions array governs how the row may be modified.
 Each permissions object in the array has three propertyies:
@@ -238,7 +255,13 @@ async function assignPermissions(id) {
 
 ### Transactions
 
-A ScuttleKit transaction means that the view will not update until the "transaction complete" message is received.
+A ScuttleKit transaction can be used to process a list of operations (such as insert, update etc) together.
+If an operation has the transaction property set, the corresponding row will not be updated until the transaction is committed.
+
+Do note that they are not the same as a database transaction.
+
+* Inside a transaction, read operations don't see the uncommitted changes.
+* If an update fails on account of missing permissions, other statements will still succeed.
 
 ```js
 async function addTodoAndDeleteAnother(newTodo, oldTodoId) {
@@ -246,45 +269,26 @@ async function addTodoAndDeleteAnother(newTodo, oldTodoId) {
   const transaction = db.createTransaction();
   await db.insert("todo", newTodo, { transaction });
   await db.del("todo", oldTodoId, { transaction });
-  await transaction.complete();
+  await db.completeTransaction(transaction);
 }
 ```
 
-Corresponding SSB write:
+Sometimes, it is necessary to see the state of uncommited data. You can do this with the get() function.
+Here's a simple example.
 
 ```js
-// Add a todo
-sbot.publish({
-  type: "scuttledo-todo",
-  id: newTodo.id,
-  // other fields...
-  transaction: "some-random-autogenerated-id"
-});
-
-// Delete another todos
-sbot.publish({
-  type: "scuttledo-todo",
-  id: oldTodoId,
-  __isDeleted: true,
-  transaction: "some-random-autogenerated-id"
-});
-
-// Complete the transaction
-sbot.publish({
-  type: "scuttledo-transaction",
-  transaction: "some-random-autogenerated-id"
-});
+async function addTodoAndDeleteAnother(newTodo, oldTodoId) {
+  const db = sdk.getService("sqlite");
+  const transaction = db.createTransaction();
+  const { __id } = await db.insert("todo", newTodo, { transaction });
+  const newlyInsertedTodo = await db.get("todo", __id, { transaction });
+  await db.completeTransaction(transaction);
+}
 ```
 
-Note that the data in the transaction will be visible in raw SSB logs, even if the transaction was not committed.
+### Schema Changes (Incomplete!)
 
-### Multisig Transactions
-
-### Schema Changes
-
-It is inevitable that at some point you'll make changes to the schema. To support this, ScuttleKit allows you to define transforms which can convert data from an earlier schema into a newer one.
-Transform Functions are run when the schema version changes - the SSB log is replayed and the transform function will be called for each entry.
-The function should return an object or throw an Error - if an error is thrown, it is logged and the next record is processed.
+It is inevitable that at some point you'll make changes to the schema. To support this, ScuttleKit allows you to define transforms which can convert data from an earlier schema into a newer one. Transform Functions are run when the schema version changes - the SSB log is replayed and the transform function will be called for each entry. The function should return an object or throw an Error - if an error is thrown, it is logged and the next record is processed.
 
 Every SSB log entry made via ScuttleKit will contain an \_\_schema property, which signifies the schema at the time of record creation.
 The transform function could use the version to decide how to interpret a record.
