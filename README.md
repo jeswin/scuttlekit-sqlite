@@ -238,7 +238,10 @@ async function addTodoAndDeleteAnother(newTodo, oldTodoId) {
 ### Triggers
 
 ScuttleKit lets you set triggers that will be called when data is modified.
-Triggers are similar to those one would find in typical databases, but with restrictions. If the record is modified in a transaction, the trigger fires only when the transaction completes.
+Triggers are similar to those one would find in typical databases, but with restrictions. If the record is modified in a transaction, the trigger fires only when the transaction completes. 
+
+An app does not see trigger events if it is not active at the time of the event.
+So these are meant to use used for live updates on the screen.
 
 ```js
 async function alertOnNewSong() {
@@ -262,13 +265,61 @@ async function removeSongAlerts(triggerId) {
 
 ### Notifications
 
-There is built-in support for notifications and messages via the notifications service (sdk.notifications).
+There is built-in support for notifications and messages via the messaging service.
 
 Send a message to another user
 
 ```js
-
+async function sendMessage() {
+  const messaging = sdk.getService("messaging");
+  const type = "my-greeting";
+  const recipients = ["bobs-id", "carols-id"];
+  const message = { greeting: "Hello world" };
+  messaging.send(type, recipients, greeting);
+}
 ```
+
+Receive Notifications
+
+```js
+async function receiveMessage() {
+  const messaging = sdk.getService("messaging");
+  const type = "my-greeting";
+  const senders = ["alices-id"];  
+  messaging.receive(type, senders, event => {
+    const sender = event.sender;
+    const text = event.data.text;
+    console.log(`${sender} said $${text}`);
+  });
+}
+```
+
+Broadcast a message to all users
+
+```js
+async function broadcastMessage() {
+  const messaging = sdk.getService("messaging");
+  const type = "my-greeting";
+  const recipients = ["bobs-id", "carols-id"];
+  const message = { greeting: "Hello world" };
+  messaging.broadcast(type, greeting);
+}
+```
+
+Receive a broadcast
+
+```js
+async function receiveBroadcast() {
+  const messaging = sdk.getService("messaging");
+  const type = "my-greeting";
+  messaging.listen(type, event => {
+    const sender = event.sender;
+    const text = event.data.text;
+    console.log(`${sender} said $${text}`);
+  });
+}
+```
+
 
 ### Schema Changes (Incomplete!)
 
