@@ -1,6 +1,6 @@
 # ScuttleKit
 
-NOTICE: This is work in progress. Planning for an alpha by the end of April.
+NOTICE: This is work in progress. Planning for an alpha by mid-May.
 
 ScuttleKit simplifies the development of distributed apps that run on the Secure ScuttleButt (SSB) peer-to-peer network. ScuttleKit apps run in the browser and requires the end-user to be on the SSB network. If the end user is not already on the network, an alert is shown.
 
