@@ -46,6 +46,10 @@ const schema = {
       },
       encrypted: { type: "boolean" },
       foreignKeys: [{ field: "listId", table: "lists" }]
+      indexes: [
+        ["completed"],
+        ["completed", "timestamp"]
+      ]
     },
     list: {
       fields: {
@@ -218,7 +222,9 @@ Sometimes, it is necessary to see the state of uncommited data. You can do this 
 async function addTodoAndDeleteAnother(newTodo, oldTodoId) {
   const transaction = db.createTransaction();
   const { __id } = await scuttlekit.db.insert("todo", newTodo, { transaction });
-  const newlyInsertedTodo = await scuttlekit.db.get("todo", __id, { transaction });
+  const newlyInsertedTodo = await scuttlekit.db.get("todo", __id, {
+    transaction
+  });
   await scuttlekit.db.completeTransaction(transaction);
 }
 ```
