@@ -2,20 +2,21 @@
 
 NOTICE: This is work in progress. Planning for an alpha by mid-May.
 
-ScuttleKit simplifies the development of distributed apps that run on the Secure ScuttleButt (SSB) peer-to-peer network. ScuttleKit apps run in the browser and requires the end-user to be on the SSB network. If the end user is not already on the network, an alert is shown.
+ScuttleKit simplifies the development of distributed apps that run on the Secure ScuttleButt (SSB) peer-to-peer network. ScuttleKit apps run in the browser and requires the end-user to be on the SSB network. If the end user is not on the network, an option to install ScuttleButt is shown.
+
+Apps are built entirely with client-side technologies; HTML, CSS and JavaScript.
 
 # Creating a client
 
-Include the scuttlekit-client library on a web page for easy access to the ScuttleKit API. You can either add scuttlekit-client with a script tag, or use it via npm if you're using a JS bundler (like browserify, parcel or webpack).
+First, add scuttlekit-client to your project via npm or yarn. 
 
 ```bash
-# Use via yarn/npm or just include a <script> tag
 yarn add scuttlekit-client
 ```
 
-An app should initialize the ScuttleKit SDK on page load (DOMContentLoaded). If the app is not registered on the end user's machine, the SDK will redirect the browser to a ScuttleKit hosted page (localhost:1103) where the user can choose to grant requested permissions. Once the user grants permissions, the browser is redirected to a page mentioned in configuration (see successUrl below). There may be a delay on first load, since the local database needs to be created.
+An app should initialize the ScuttleKit SDK on Page Load (DOMContentLoaded). If the app is not registered on the end user's machine, the SDK will redirect the user's browser to a ScuttleKit hosted page (localhost:1103) where the user can choose to allow or disallow the app to execute. Once the user allows registration, the app is reloaded in the browser and allowed access to the underlying distributed database. There may be a delay on first load, since the local database needs to be created.
 
-As part of the registration, the developer needs to supply the appName, version, and database schema to ScuttleKit. Primary key for each table is an auto-generated string column called \_\_id. This need not specified in the schema.
+As part of the registration, the developer needs to supply details like the appName, version and database schema to ScuttleKit. Primary key for each table is an auto-generated string column called \_\_id. This need not be specified in the schema.
 
 ```js
 import * as scuttlekit from "scuttlekit-client";
